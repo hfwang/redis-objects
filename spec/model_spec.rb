@@ -106,4 +106,10 @@ describe Redis::Objects::Model do
     Post.new(1).save('title'=>'My Post', 'created_at'=>Time.now)
     Post.new(1).attrs['created_at'].class.should == Time
   end
+
+  it "should have a get method" do
+    Post.get(1).should.be.nil
+    Post.new(1).save('title'=>'My Post')
+    Post.get(1).is_a?(Post).should.be.true
+  end
 end

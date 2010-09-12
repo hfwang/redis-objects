@@ -60,14 +60,6 @@ class Redis
     class Model 
       include Redis::Objects
 
-      def attrs
-        @attrs ||= Redis::Hash.new(
-          "#{self.class.redis_prefix(self.class)}:#{id}:attrs",
-          Model.redis,
-          {:marshal_keys=>self.class.schema.marshal_options}
-        )
-      end
-
       def self.inherited(c)
         c.send(:include, Redis::Objects)
       end
@@ -76,6 +68,20 @@ class Redis
       def self.schema(&block)
         @schema = Schema.new(self, &block) if block_given?
         @schema
+      end
+
+      # Returns a new model instance if the key exists, else nil
+      def self.get(id)
+        m = self.new(id)
+        self.redis.exists(m.attrs.key) ? m : nil
+      end
+
+      def attrs
+        @attrs ||= Redis::Hash.new(
+          "#{self.class.redis_prefix(self.class)}:#{id}:attrs",
+          Model.redis,
+          {:marshal_keys=>self.class.schema.marshal_options}
+        )
       end
 
       # validate and save
