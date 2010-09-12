@@ -57,6 +57,16 @@ module CustomValidations
   end
 end
 
+module PasswordMarshal
+  def self.dump(val)
+    val + "_encrypted"
+  end
+
+  def self.restore(val)
+    val.split("_encrypted").first
+  end
+end
+
 class Post < Redis::Objects::Model
   schema do
     title!
@@ -64,6 +74,7 @@ class Post < Redis::Objects::Model
     author V.length(3,20)
     tag CustomValidations.custom_validation
     created_at :marshal=>true
+    password V.length(3, 200), :marshal=>PasswordMarshal
     body
   end
 
@@ -105,6 +116,13 @@ describe Redis::Objects::Model do
   it "should support marshalling of types" do
     Post.new(1).save('title'=>'My Post', 'created_at'=>Time.now)
     Post.new(1).attrs['created_at'].class.should == Time
+  end
+
+  it "should support custom marshalling" do
+    Post.new(1).save('title'=>"My Post", 'password'=>'secret')
+    Post.redis.hget('post:1:attrs','password').should == "secret_encrypted"
+    Post.new(1).attrs['password'].should == 'secret'
+
   end
 
   it "should have a get method" do

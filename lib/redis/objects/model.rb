@@ -49,7 +49,7 @@ class Redis
         end
         options = args.last.is_a?(::Hash) ? args.pop : {}
         if options[:marshal]
-          @marshal_options[name] = true
+          @marshal_options[name] = options[:marshal]
         end
         @keys[name] = args
       end

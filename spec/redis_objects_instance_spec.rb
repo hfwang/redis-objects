@@ -9,6 +9,16 @@ require 'redis/set'
 require 'redis/sorted_set'
 require 'redis/hash_key'
 
+module CustomMarshal
+  def self.dump(value)
+    value + "_marshalled"
+  end
+
+  def self.restore(value)
+    value.split("_marshalled").first
+  end
+end
+
 describe Redis::Value do
   before do
     @value = Redis::Value.new('spec/value')
@@ -43,6 +53,13 @@ describe Redis::Value do
     @value.del.should == 1
     @value.should.be.nil
     @value.options[:marshal] = false
+  end
+
+  it "should handle custom marshalled values" do
+    @value.options[:marshal] = CustomMarshal
+    @value.value = "Hello"
+    $redis.get(@value.key).should == "Hello_marshalled"
+    @value.should == "Hello"
   end
 
   it "should support renaming values" do
