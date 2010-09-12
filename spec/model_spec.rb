@@ -112,4 +112,10 @@ describe Redis::Objects::Model do
     Post.new(1).save('title'=>'My Post')
     Post.get(1).is_a?(Post).should.be.true
   end
+
+  it "should have a create method" do
+    Post.new(1).exists?.should.be.false
+    p = Post.create(1, {'title'=>'My Post'})
+    Post.new(1).exists?.should.be.true
+  end
 end

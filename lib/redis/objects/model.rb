@@ -70,10 +70,20 @@ class Redis
         @schema
       end
 
+      def self.create(id, attrs)
+        m = self.new(id)
+        raise "Already exists" if m.exists?
+        m.save(attrs)
+      end
+
       # Returns a new model instance if the key exists, else nil
       def self.get(id)
         m = self.new(id)
-        self.redis.exists(m.attrs.key) ? m : nil
+        m.exists? ? m : nil
+      end
+
+      def exists?
+        self.redis.exists(attrs.key) 
       end
 
       def attrs
