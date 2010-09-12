@@ -63,11 +63,11 @@ class Post < Redis::Objects::Model
     words Integer
     author V.length(3,20)
     tag CustomValidations.custom_validation
-    # created_at :marshal=>true
+    created_at :marshal=>true
     body
   end
 
-  def initialize(id=1) @id = id end
+  def initialize(id=1) @id = id; end
   def id; @id; end
 end
 
@@ -90,7 +90,7 @@ describe Redis::Objects::Model do
   end
 
   it "should validate keys" do
-    lambda { Post.new.save('badkey'=>'hey') }.should.raise
+    lambda { Post.new(1).save('badkey'=>'hey') }.should.raise
   end
 
   it "should call validation methods" do
@@ -102,8 +102,8 @@ describe Redis::Objects::Model do
     Post.new(1).save('title'=>'Post', 'tag'=>'hello')
   end
 
-  # it "should support marshalling of types" do
-  #   Post.new(1).save('title'=>'My Post', 'created_at'=>Time.now)
-  #   Post.new(1).attrs['created_at'].class.should == Time
-  # end
+  it "should support marshalling of types" do
+    Post.new(1).save('title'=>'My Post', 'created_at'=>Time.now)
+    Post.new(1).attrs['created_at'].class.should == Time
+  end
 end

@@ -15,7 +15,11 @@ class Redis
     # A schema defines allowed keys and validations for saving to a 
     # Redis::Object::Hash in `attrs`
     class Schema
-      def initialize(&block)
+      attr_reader :marshal_options
+
+      def initialize(klass=nil, &block)
+        @klass = klass
+        @marshal_options = {}
         @keys = {}
         self.instance_eval(&block)
       end
@@ -44,6 +48,9 @@ class Redis
           name.to_s
         end
         options = args.last.is_a?(::Hash) ? args.pop : {}
+        if options[:marshal]
+          @marshal_options[name] = true
+        end
         @keys[name] = args
       end
     end
@@ -53,21 +60,28 @@ class Redis
     class Model 
       include Redis::Objects
 
+      def attrs
+        @attrs ||= Redis::Hash.new(
+          "#{self.class.redis_prefix(self.class)}:#{id}:attrs",
+          Model.redis,
+          {:marshal_keys=>self.class.schema.marshal_options}
+        )
+      end
+
       def self.inherited(c)
         c.send(:include, Redis::Objects)
-        c.send(:hash_key, :attrs)
       end
 
       # Pass in a block to define the model schema
       def self.schema(&block)
-        @schema = Schema.new(&block) if block_given?
-        @schema ||= Schema.new
+        @schema = Schema.new(self, &block) if block_given?
+        @schema
       end
 
       # validate and save
       def save(attrs)
-        self.class.schema.validate(attrs) 
-        self.attrs.bulk_set(attrs) 
+        self.class.schema.validate(attrs)
+        self.attrs.bulk_set(attrs)
       end
 
     end
