@@ -1,4 +1,11 @@
-# 
+
+# If available, use the superfast YAJL lib to parse JSON.
+begin
+  require 'yajl/json_gem'
+rescue LoadError
+  require 'json'
+end
+
 # Inherit from Redis::Objects::Model for model like behavior.
 class Redis
   module Objects
@@ -116,11 +123,16 @@ class Redis
         )
       end
 
+      def to_json
+        {:id => id}.merge(self.attrs.all).to_json
+      end
+
       # validate and save
       def save(attrs)
         self.class.schema.validate(attrs)
         redis.zadd(self.class.prefix('created_at'), Time.now.to_i, id) unless exists?
         self.attrs.bulk_set(attrs)
+        self
       end
 
     end

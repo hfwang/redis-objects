@@ -138,6 +138,14 @@ describe Redis::Objects::Model do
     Post.new(1).exists?.should.be.true
   end
 
+  it "should have to_json" do
+    Post.new(1).save('title'=>'My Post').to_json.should == \
+      {'id' => 1, 'title' => 'My Post'}.to_json
+  end
+
+  #
+  # Indexes
+  #
   it "should have an index" do
     Post.keys.should == []
     Post.create(1, {'title'=>'My Post'})
@@ -170,5 +178,10 @@ describe Redis::Objects::Model do
     Post.all(2,2).last.attrs['title'].should == "2 post"
     Post.all(2,5).size.should == 4
     Post.all(2,5).last.attrs['title'].should == "1 post"
+  end
+
+  it "should return json when converting query" do
+    Post.create(1, {'title'=>'My Post'})
+    Post.all.to_json.should == [{'id'=>'1', 'title'=>'My Post'}].to_json
   end
 end
