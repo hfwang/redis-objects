@@ -84,7 +84,8 @@ end
 
 describe Redis::Objects::Model do
   before do
-    $redis.del('post:1:attrs')
+    (1..10).each { |id| $redis.del("post:#{id}:attrs") }
+    $redis.del('post:created_at')
   end
 
   it "should include Redis::Objects as well" do
@@ -135,5 +136,39 @@ describe Redis::Objects::Model do
     Post.new(1).exists?.should.be.false
     p = Post.create(1, {'title'=>'My Post'})
     Post.new(1).exists?.should.be.true
+  end
+
+  it "should have an index" do
+    Post.keys.should == []
+    Post.create(1, {'title'=>'My Post'})
+    Post.keys.should == ["1"]
+    Post.new(2).save({'title'=>'Your Post'})
+    Post.keys.should == ["2", "1"]
+  end
+
+  it "should count the number of objects" do
+    Post.count.should == 0
+    Post.create(1, {'title'=>'My Post'})
+    Post.count.should == 1
+    Post.create(2, {'title'=>'Your Post'})
+    Post.count.should == 2
+  end
+
+  it "all should return instances of the model" do
+    Post.create(1, {'title'=>'My Post'})
+    Post.create(2, {'title'=>'Your Post'})
+    posts = Post.all
+    posts.first.attrs['title'].should == "Your Post"
+    posts.last.attrs['title'].should == "My Post"
+  end
+
+  it "it should query based on indexes given" do
+    (1..6).each { |id| Post.create(id, {'title'=>"#{id} post"}) }
+    Post.count.should == 6
+    Post.all(0,5).last.attrs['title'].should == "1 post"
+    Post.all(0,2).last.attrs['title'].should == "4 post"
+    Post.all(2,2).last.attrs['title'].should == "2 post"
+    Post.all(2,5).size.should == 4
+    Post.all(2,5).last.attrs['title'].should == "1 post"
   end
 end

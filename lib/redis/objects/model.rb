@@ -64,6 +64,26 @@ class Redis
         c.send(:include, Redis::Objects)
       end
 
+      def self.prefix(key)
+        #redis_field_key(key)
+        "#{self.redis_prefix(self)}:#{key}"
+      end
+
+      # Return the keys newest to oldest
+      def self.keys(first=0, num=100)
+        redis.zrevrange(prefix('created_at'), first, first+num)
+      end
+
+      # Return instances of the model, newest to oldest
+      def self.all(first=0, num=100)
+        keys(first, num).map { |key| self.new(key) }
+      end
+
+      # Number of objects
+      def self.count
+        redis.zcard(prefix('created_at'))
+      end
+
       # Pass in a block to define the model schema
       def self.schema(&block)
         @schema = Schema.new(self, &block) if block_given?
@@ -86,10 +106,12 @@ class Redis
         self.redis.exists(attrs.key) 
       end
 
+      def prefix(key)
+        "#{self.class.redis_prefix(self.class)}:#{id}:#{key}"
+      end
+
       def attrs
-        @attrs ||= Redis::Hash.new(
-          "#{self.class.redis_prefix(self.class)}:#{id}:attrs",
-          Model.redis,
+        @attrs ||= Redis::Hash.new(prefix('attrs'), Model.redis,
           {:marshal_keys=>self.class.schema.marshal_options}
         )
       end
@@ -97,6 +119,7 @@ class Redis
       # validate and save
       def save(attrs)
         self.class.schema.validate(attrs)
+        redis.zadd(self.class.prefix('created_at'), Time.now.to_i, id) unless exists?
         self.attrs.bulk_set(attrs)
       end
 
