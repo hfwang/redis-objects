@@ -14,8 +14,8 @@ describe Redis::Objects::Schema do
     end
     schema.validate({'title'=>'hello'}).should.be.true
     schema.validate({'title'=>'hell☃'}).should.be.true
-    lambda { schema.validate({'title'=>'he'}) }.should.raise
-    lambda { schema.validate({'title'=>'helloo'}) }.should.raise
+    lambda { schema.validate({'title'=>'he'}) }.should.raise Redis::Objects::V::ValidationError
+    lambda { schema.validate({'title'=>'helloo'}) }.should.raise Redis::Objects::V::ValidationError
   end
 
   it "should support multiple validations" do
@@ -23,8 +23,8 @@ describe Redis::Objects::Schema do
       title Redis::Objects::V.required, Redis::Objects::V.length(3,5)
     end
     schema.validate({'title'=>'hello'}).should.be.true
-    lambda { schema.validate({}) }.should.raise
-    lambda { schema.validate({'title'=>'he'}) }.should.raise
+    lambda { schema.validate({}) }.should.raise Redis::Objects::V::AttributeRequired
+    lambda { schema.validate({'title'=>'he'}) }.should.raise Redis::Objects::V::ValidationError
   end
 
   it "should support validating by type" do
@@ -40,7 +40,7 @@ describe Redis::Objects::Schema do
       title!
     end
     schema.validate({'title'=>'hello'}).should.be.true
-    lambda { schema.validate({}) }.should.raise
+    lambda { schema.validate({}) }.should.raise Redis::Objects::V::AttributeRequired
   end
 
 
@@ -53,7 +53,7 @@ end
 
 module CustomValidations
   def self.custom_validation
-    lambda { |val| raise unless !val || val =~ /hello/ }
+    lambda { |key,val| raise unless !val || val =~ /hello/ }
   end
 end
 
@@ -102,11 +102,11 @@ describe Redis::Objects::Model do
   end
 
   it "should validate keys" do
-    lambda { Post.new(1).save('badkey'=>'hey') }.should.raise
+    lambda { Post.new(1).save('badkey'=>'hey') }.should.raise Redis::Objects::V::AttributeNotSpecified
   end
 
   it "should call validation methods" do
-    lambda { Post.new(1).save('body'=>'My Post') }.should.raise
+    lambda { Post.new(1).save('body'=>'My Post') }.should.raise Redis::Objects::V::AttributeRequired
   end
 
   it "should call custom validation" do

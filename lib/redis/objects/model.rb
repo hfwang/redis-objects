@@ -10,12 +10,18 @@ end
 class Redis
   module Objects
     module V
+      class AttributeRequired < StandardError; end #:nodoc:
+      class AttributeNotSpecified < StandardError; end #:nodoc:
+      class ValidationError < StandardError; end #:nodoc:
+
       def self.required
-        lambda { |val| raise unless val }
+        lambda { |k,v| 
+          raise AttributeRequired, "Required attribute #{k} is missing" unless v
+        }
       end
 
       def self.length(min=0, max=1000)
-        lambda { |v| raise unless !v || min <= v.length && v.length <= max }
+        lambda { |k,v| raise ValidationError, "#{k} should be between #{min} and #{max} but is #{v.length}" unless !v || min <= v.length && v.length <= max }
       end
     end
 
@@ -33,12 +39,12 @@ class Redis
 
       def validate(attrs)
         attrs.each do |k,v|
-          raise unless @keys.include?(k)
+          raise Redis::Objects::V::AttributeNotSpecified, "Attribute #{k} is not in the schema" unless @keys.include?(k)
         end
         @keys.each do |k,validations|
           (validations || []).each do |v|
             if v.respond_to?(:call) 
-              v.call(attrs[k])
+              v.call(k, attrs[k])
             else
               raise unless !attrs[k] || attrs[k].is_a?(v)
             end
