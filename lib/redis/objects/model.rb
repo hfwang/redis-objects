@@ -38,6 +38,7 @@ class Redis
       end
 
       def validate(attrs)
+        raise Redis::Objects::V::ValidationError, "Invalid attributes provided" unless attrs
         attrs.each do |k,v|
           raise Redis::Objects::V::AttributeNotSpecified, "Attribute #{k} is not in the schema" unless @keys.include?(k)
         end
@@ -164,6 +165,7 @@ class Redis
               newid = Digest::MD5.hexdigest(rand.to_s)[0..self.class.key_length-1]
               if redis.renamenx(self.attrs.key, prefix('attrs', newid))
                 @id = newid
+                @attrs = nil
                 found = true
               end
               i += 1
