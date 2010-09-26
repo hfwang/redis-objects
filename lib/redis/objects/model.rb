@@ -79,7 +79,21 @@ class Redis
 
       def self.prefix(key)
         #redis_field_key(key)
-        "#{self.redis_prefix(self)}:#{key}"
+        "#{self.redis_prefix(self)}::#{key}"
+      end
+
+      class << self
+        attr_accessor :key_length
+      end
+
+      # Specify that keys should be handled here
+      def self.key(type)
+        define_method(:id) {
+          @id ||= redis.incr(self.class.prefix('ids'))
+        }
+        if type.respond_to?(:has_key?) && type.has_key?(:length)
+          self.key_length = type[:length]
+        end
       end
 
       # Return the keys newest to oldest
@@ -115,12 +129,17 @@ class Redis
         m.exists? ? m : nil
       end
 
+      # Default is an optional id
+      def initialize(id=nil)
+        @id = id
+      end
+
       def exists?
         self.redis.exists(attrs.key) 
       end
 
-      def prefix(key)
-        "#{self.class.redis_prefix(self.class)}:#{id}:#{key}"
+      def prefix(key, theid=nil)
+        "#{self.class.redis_prefix(self.class)}:#{theid || id}:#{key}"
       end
 
       def attrs
@@ -136,8 +155,22 @@ class Redis
       # validate and save
       def save(attrs)
         self.class.schema.validate(attrs)
-        redis.zadd(self.class.prefix('created_at'), Time.now.to_i, id) unless exists?
+        new = !exists?
         self.attrs.bulk_set(attrs)
+        if new
+          if self.class.key_length
+            i=0; found=false
+            while !found && i < 1000 do
+              newid = Digest::MD5.hexdigest(rand.to_s)[0..self.class.key_length-1]
+              if redis.renamenx(self.attrs.key, prefix('attrs', newid))
+                @id = newid
+                found = true
+              end
+              i += 1
+            end
+          end
+          redis.zadd(self.class.prefix('created_at'), Time.now.to_i, id)
+        end
         self
       end
 

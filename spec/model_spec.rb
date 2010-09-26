@@ -82,10 +82,23 @@ class Post < Redis::Objects::Model
   def id; @id; end
 end
 
+class Link < Redis::Objects::Model
+  key :incr
+  schema do
+    url!
+  end
+end
+
+class Account < Redis::Objects::Model
+  key :length=>5
+  schema do
+    name
+  end
+end
+
 describe Redis::Objects::Model do
   before do
-    (1..10).each { |id| $redis.del("post:#{id}:attrs") }
-    $redis.del('post:created_at')
+    $redis.flushdb
   end
 
   it "should include Redis::Objects as well" do
@@ -141,6 +154,42 @@ describe Redis::Objects::Model do
   it "should have to_json" do
     Post.new(1).save('title'=>'My Post').to_json.should == \
       {'id' => 1, 'title' => 'My Post'}.to_json
+  end
+
+  describe "Keys" do
+    it "should support incremental keys" do
+      Link.new.save('url'=>'http://google.ca')
+      $redis.get("link::ids").to_i.should == 1
+      Link.new(1).attrs['url'].should == 'http://google.ca'
+    end
+
+    it "should support incremental keys" do
+      Link.new.save('url'=>'http://google.ca')
+      $redis.get("link::ids").to_i.should == 1
+      Link.new(1).attrs['url'].should == 'http://google.ca'
+      Link.new.save('url'=>'http://yahoo.com')
+      $redis.get("link::ids").to_i.should == 2
+    end
+
+    it "should not increment counter if validation fails" do
+      Link.new.save('url'=>'http://google.ca')
+      lambda { Link.new.save({}) }.should.raise Redis::Objects::V::AttributeRequired
+      $redis.get("link::ids").to_i.should == 1
+    end
+
+    it "should support random keys" do
+      Account.new.save('name' => 'test')
+      Account.all.first.id.should =~ /^\w{5}$/
+    end
+
+    it "should retry if random key is taken" do
+      Account.key_length = 1
+      # prefill a lot of keys, so only a few remain
+      ('a'..'z').each { |c| $redis.set("account:#{c}:attrs", "taken") }
+      Account.new.save('name' => 'test')
+      Account.all.first.id.should =~ /^\d{1}$/
+    end
+
   end
 
   #
