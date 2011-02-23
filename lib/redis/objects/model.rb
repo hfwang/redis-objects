@@ -5,6 +5,7 @@ begin
 rescue LoadError
   require 'json'
 end
+require 'digest/md5'
 
 # Inherit from Redis::Objects::Model for model like behavior.
 class Redis
@@ -176,6 +177,11 @@ class Redis
         self
       end
 
+      def destroy
+        return unless exists?
+        self.attrs.clear
+        redis.zrem(self.class.prefix('created_at'), id)
+      end
     end
   end
 end

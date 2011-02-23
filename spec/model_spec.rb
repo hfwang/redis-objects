@@ -156,6 +156,12 @@ describe Redis::Objects::Model do
       {'id' => 1, 'title' => 'My Post'}.to_json
   end
 
+  it "should hava a destroy method" do
+    Post.new(1).save('title'=>"My Post", 'password'=>'secret')
+    Post.new(1).destroy
+    $redis.exists('post:1:attrs').should == false
+  end
+
   describe "Keys" do
     it "should support incremental keys" do
       Link.new.save('url'=>'http://google.ca')
@@ -227,6 +233,12 @@ describe Redis::Objects::Model do
     Post.all(2,2).last.attrs['title'].should == "2 post"
     Post.all(2,5).size.should == 4
     Post.all(2,5).last.attrs['title'].should == "1 post"
+  end
+
+  it "delete should remove the id from the index" do
+    Post.create(1, {'title'=>'My Post'})
+    Post.new(1).destroy
+    Post.keys.should == []
   end
 
   it "should return json when converting query" do
