@@ -106,7 +106,7 @@ describe Redis::Objects::Model do
   end
 
   it "should set a hash on attrs" do
-    Post.new.attrs.class.should == Redis::Hash
+    Post.new.attrs.class.should == Redis::HashKey
   end
 
   it "should add a save method" do

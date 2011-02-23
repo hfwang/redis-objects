@@ -145,7 +145,7 @@ class Redis
       end
 
       def attrs
-        @attrs ||= Redis::Hash.new(prefix('attrs'), Model.redis,
+        @attrs ||= Redis::HashKey.new(prefix('attrs'), Model.redis,
           {:marshal_keys=>self.class.schema.marshal_options}
         )
       end
