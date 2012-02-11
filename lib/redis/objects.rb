@@ -45,6 +45,8 @@ class Redis
     autoload :SortedSets, File.join(dir, 'sorted_sets')
     autoload :Values, File.join(dir, 'values')
     autoload :Hashes, File.join(dir, 'hashes')
+    autoload :Model, File.join(dir, 'model')
+    autoload :Schema, File.join(dir, 'model')
 
     class NotConnected < StandardError; end
     class NilObjectId  < StandardError; end

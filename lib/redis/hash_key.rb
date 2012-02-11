@@ -16,7 +16,7 @@ class Redis
 
     def initialize(key, *args)
       super
-      @options[:marshal_keys] ||= {} 
+      @options[:marshal_keys] ||= {}
     end
 
     # Needed since Redis::Hash masks bare Hash in redis.rb

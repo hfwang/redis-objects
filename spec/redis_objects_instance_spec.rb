@@ -9,12 +9,22 @@ require 'redis/set'
 require 'redis/sorted_set'
 require 'redis/hash_key'
 
+module CustomMarshal
+  def self.dump(value)
+    value + "_marshalled"
+  end
+
+  def self.restore(value)
+    value.split("_marshalled").first
+  end
+end
+
 describe Redis::Value do
   before do
     @value = Redis::Value.new('spec/value')
     @value.delete
   end
-  
+
   it "should marshal default value" do
     @value = Redis::Value.new('spec/value', :default => {:json => 'data'}, :marshal => true)
     @value.value.should == {:json => 'data'}
@@ -34,7 +44,7 @@ describe Redis::Value do
     @value.should == nil
     @value.value = {:json => 'data'}
     @value.should == {:json => 'data'}
-    
+
     # no marshaling
     @value.options[:marshal] = false
     v = {:json => 'data'}
@@ -48,6 +58,13 @@ describe Redis::Value do
     @value.del.should == 1
     @value.should.be.nil
     @value.options[:marshal] = false
+  end
+
+  it "should handle custom marshalled values" do
+    @value.options[:marshal] = CustomMarshal
+    @value.value = "Hello"
+    $redis.get(@value.key).should == "Hello_marshalled"
+    @value.should == "Hello"
   end
 
   it "should support renaming values" do
@@ -235,7 +252,7 @@ describe Redis::List do
       @list.size.should == 1
       @list.options[:marshal] = false
     end
-    
+
     it "should support renaming lists" do
       @list.should.be.empty
       @list << 'a' << 'b' << 'a' << 3
@@ -277,7 +294,7 @@ describe Redis::Counter do
     @counter.key.should == 'spec/counter'
     @counter.incr(10)
     @counter.should == 10
-    
+
     # math proxy ops
     (@counter == 10).should.be.true
     (@counter <= 10).should.be.true
@@ -398,7 +415,7 @@ describe Redis::HashKey do
   describe "With Marshal" do
     before do
       @hash = Redis::HashKey.new('test_hash', $redis,
-                                {:marshal_keys=>{'created_at'=>true}})
+                                 {:marshal_keys=>{'created_at'=>true}})
       @hash.clear
     end
 
@@ -432,13 +449,13 @@ describe Redis::HashKey do
     @hash  = Redis::HashKey.new('test_hash')
     @hash.clear
   end
-  
+
   it "should handle complex marshaled values" do
     @hash.options[:marshal] = true
     @hash['abc'].should == nil
     @hash['abc'] = {:json => 'data'}
     @hash['abc'].should == {:json => 'data'}
-    
+
     # no marshaling
     @hash.options[:marshal] = false
     v = {:json => 'data'}
@@ -451,26 +468,26 @@ describe Redis::HashKey do
     @hash.fetch('abc').should == [[1,2], {:t3 => 4}]
     @hash.delete('abc').should == 1
     @hash.fetch('abc').should.be.nil
-    
+
     @hash.options[:marshal] = true
     @hash.bulk_set('abc' => [[1,2], {:t3 => 4}], 'def' => [[6,8], {:t4 => 8}])
     hsh = @hash.bulk_get('abc', 'def', 'foo')
     hsh['abc'].should == [[1,2], {:t3 => 4}]
     hsh['def'].should == [[6,8], {:t4 => 8}]
     hsh['foo'].should.be.nil
-    
+
     hsh = @hash.all
     hsh['abc'].should == [[1,2], {:t3 => 4}]
     hsh['def'].should == [[6,8], {:t4 => 8}]
-    
+
     @hash.values.should == [[[1,2], {:t3 => 4}], [[6,8], {:t4 => 8}]]
-    
+
     @hash.delete('def').should == 1
     @hash.delete('abc').should == 1
-    
+
     @hash.options[:marshal] = false
   end
-  
+
   it "should get and set values" do
     @hash['foo'] = 'bar'
     @hash['foo'].should == 'bar'
@@ -494,7 +511,7 @@ describe Redis::HashKey do
       val.should == 'bar'
     end
   end
-  
+
   it "should have 1 item" do
     @hash['foo'] = 'bar'
     @hash.size.should == 1
@@ -525,7 +542,7 @@ describe Redis::HashKey do
     @hash.clear
     @hash.should.be.empty
   end
-  
+
   it "should respond to bulk_set" do
     @hash.bulk_set({'abc' => 'xyz', 'bizz' => 'bazz'})
     @hash['abc'].should == 'xyz'
@@ -552,12 +569,12 @@ describe Redis::HashKey do
     @hash.incr('counter')
     @hash['counter'].to_i.should == 2
   end
-  
+
 
   after do
     @hash.clear
   end
-  
+
 end
 
 describe Redis::Set do
@@ -593,7 +610,7 @@ describe Redis::Set do
     @set.size.should == 2
     @set.delete('a')
     @set.pop.should == 'b'
-    
+
     @set.add('a')
     @set.add('b')
 
@@ -618,7 +635,7 @@ describe Redis::Set do
     @set.delete_if{|m| m == 'c'}
     @set.sort.should == ['a','b']
   end
-  
+
   it "should handle set intersections, unions, and diffs" do
     @set_1 << 'a' << 'b' << 'c' << 'd' << 'e'
     @set_2 << 'c' << 'd' << 'e' << 'f' << 'g'
@@ -682,7 +699,7 @@ describe Redis::Set do
     @set_2.sort.should == %w(1 2 3 4 5)
 
     @set_1.sort(SORT_ORDER).should == %w(e d c b a)
-    @set_3.sort(SORT_BY).should == %w(m_1 m_2)        
+    @set_3.sort(SORT_BY).should == %w(m_1 m_2)
     @set_2.sort(SORT_LIMIT).should == %w(3 4)
 
     val1 = Redis::Value.new('spec/3/sorted')
@@ -690,7 +707,7 @@ describe Redis::Set do
 
     val1.set('val3')
     val2.set('val4')
- 
+
     @set_2.sort(SORT_GET).should == ['val3', 'val4']
     @set_2.sort(SORT_STORE).should == 2
     @set_2.redis.type(SORT_STORE[:store]).should == 'list'
@@ -766,7 +783,7 @@ describe Redis::SortedSet do
     @set.should == ['a','b']
     @set.members.should == ['a','b']
     @set['d'] = 0
-    
+
     @set.rangebyscore(0, 4).should == ['d','a']
     @set.rangebyscore(0, 4, :count => 1).should == ['d']
     @set.rangebyscore(0, 4, :count => 2).should == ['d','a']
@@ -807,11 +824,11 @@ describe Redis::SortedSet do
     @set.delete('c')
     @set.length.should == 4
     @set.size.should == 4
-    
+
     @set.range_size(100, 120).should == 0
     @set.range_size(0, 100).should == 2
     @set.range_size('-inf', 'inf').should == 4
-    
+
     @set.delete_if{|m| m == 'b'}
     @set.size.should == 3
   end
