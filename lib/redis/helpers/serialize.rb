@@ -5,13 +5,10 @@ class Redis
 
       def to_redis(value, marshal=false)
         return value unless marshal_option = options[:marshal] || marshal
-        if marshal_option == true
-          case value
-          when String, Fixnum, Bignum, Float
-            value
-          else
-            dump(value)
-          end
+        if [String, Integer, Float].any? { |k| marshal_option == k }
+          value
+        elsif marshal_option == true
+          dump(value)
         else
           marshal_option.dump(value)
         end
@@ -29,7 +26,13 @@ class Redis
             restore(value) rescue value
           end
         else
-          marshal_option.restore(value) rescue value
+          if marshal_option.is_a?(Integer)
+            value.to_i
+          elsif marshal_option.is_a?(Float)
+            value.to_f
+          else
+            marshal_option.restore(value) rescue value
+          end
         end
       end
     end
