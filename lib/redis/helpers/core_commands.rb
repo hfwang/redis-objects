@@ -5,13 +5,13 @@ class Redis
       def exists?
         redis.exists key
       end
-      
+
       def delete
         redis.del key
       end
       alias_method :del, :delete
       alias_method :clear, :delete
-      
+
       def type
         redis.type key
       end
@@ -29,7 +29,7 @@ class Redis
         @key = dest if ret && setkey
         ret
       end
-    
+
       def expire(seconds)
         redis.expire key, seconds
       end
@@ -48,7 +48,7 @@ class Redis
 
       def sort(options={})
         options[:order] ||= "asc alpha"
-        redis.sort(key, options)
+        from_redis redis.sort(key, options)
       end
     end
 

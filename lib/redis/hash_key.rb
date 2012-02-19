@@ -16,7 +16,9 @@ class Redis
 
     def initialize(key, *args)
       super
-      @options[:marshal_keys] ||= {}
+      marshal_keys = Hash.new { |hash, key| @options[:marshal] }
+      marshal_keys.update(@options[:marshal_keys]) if @options[:marshal_keys]
+      @options[:marshal_keys] = marshal_keys
     end
 
     # Needed since Redis::Hash masks bare Hash in redis.rb

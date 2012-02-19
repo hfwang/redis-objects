@@ -14,13 +14,14 @@ class Roster
   value :starting_pitcher, :marshal => true
   list :player_stats, :marshal => true
   set :outfielders, :marshal => true
+  set :simple_outfielders, :marshal => false
   sorted_set :rank
 
   # global class counters
   counter :total_players_online, :global => true
   set :all_players_online, :global => true
   value :last_player, :global => true
-  
+
   # custom keys
   counter :player_totals, :key => 'players/#{username}/total'
   list :all_player_stats, :key => 'players:all_stats', :global => true
@@ -52,14 +53,14 @@ class MethodRoster
   def increment(attribute, by=1)
     42
   end
-  
+
   def initialize(id=1) @id = id end
   def id; @id; end
 end
 
 class CustomMethodRoster < MethodRoster
   include Redis::Objects
-  
+
   attr_accessor :counter
   counter :basic
 end
@@ -68,7 +69,7 @@ describe Redis::Objects do
   before do
     @roster  = Roster.new
     @roster2 = Roster.new
-    
+
     @roster_1 = Roster.new(1)
     @roster_2 = Roster.new(2)
     @roster_3 = Roster.new(3)
@@ -96,7 +97,7 @@ describe Redis::Objects do
     Roster.all_players_online.clear
     Roster.last_player.delete
     Roster.weird_key.clear
-    
+
     @roster.player_totals.clear
     @roster.all_player_stats.clear
     @roster.total_wins.clear
@@ -153,11 +154,11 @@ describe Redis::Objects do
        @roster.respond_to?(m).should == true
      end
   end
-  
+
   it "should support increment/decrement of counters" do
     @roster.available_slots.key.should == 'roster:1:available_slots'
     @roster.available_slots.should == 10
-    
+
     # math proxy ops
     (@roster.available_slots == 10).should.be.true
     (@roster.available_slots <= 10).should.be.true
@@ -184,7 +185,7 @@ describe Redis::Objects do
     @roster2.basic.decrement.should == 0
     @roster.basic.get.should == 0
   end
-  
+
   it "should support class-level increment/decrement of counters" do
     Roster.get_counter(:available_slots, @roster.id).should == 10
     Roster.increment_counter(:available_slots, @roster.id).should == 11
@@ -205,7 +206,7 @@ describe Redis::Objects do
     Roster.total_players_online.decrement(2).should == 1
     Roster.total_players_online.reset.should.be.true
     Roster.total_players_online.should == 0
-    
+
     Roster.get_counter(:total_players_online).should == 0
     Roster.increment_counter(:total_players_online).should == 1
     Roster.increment_counter(:total_players_online, nil, 3).should == 4
@@ -227,21 +228,21 @@ describe Redis::Objects do
     end
     @roster.available_slots.should == 9
     a.should.be.true
-    
+
     @roster.available_slots.should == 9
     @roster.available_slots.decr do |cnt|
       @roster.available_slots.should == 8
       false
     end
     @roster.available_slots.should == 8
-    
+
     @roster.available_slots.should == 8
     @roster.available_slots.decr do |cnt|
       @roster.available_slots.should == 7
       nil  # should rewind
     end
     @roster.available_slots.should == 8
-    
+
     @roster.available_slots.should == 8
     @roster.available_slots.incr do |cnt|
       if 1 == 2  # should rewind
@@ -266,7 +267,7 @@ describe Redis::Objects do
     rescue
     end
     @roster.available_slots.should == 9
-    
+
     # check return value from the block
     value =
       @roster.available_slots.decr do |cnt|
@@ -386,7 +387,7 @@ describe Redis::Objects do
     error.should.be.nil
     Roster.redis.get("roster:2:resort_lock").should.be.nil
   end
-  
+
   it "should handle simple values" do
     @roster.starting_pitcher.should == nil
     @roster.starting_pitcher = 'Trevor Hoffman'
@@ -479,44 +480,44 @@ describe Redis::Objects do
   end
 
   it "should handle sets of simple values" do
-    @roster.outfielders.should.be.empty
-    @roster.outfielders << 'a' << 'a' << 'a'
-    @roster.outfielders.should == ['a']
-    @roster.outfielders.get.should == ['a']
-    @roster.outfielders << 'b' << 'b'
-    @roster.outfielders.to_s.should == 'a, b'
-    @roster.outfielders.should == ['a','b']
-    @roster.outfielders.members.should == ['a','b']
-    @roster.outfielders.get.should == ['a','b']
-    @roster.outfielders << 'c'
-    @roster.outfielders.sort.should == ['a','b','c']
-    @roster.outfielders.get.sort.should == ['a','b','c']
-    @roster.outfielders.delete('c')
-    @roster.outfielders.should == ['a','b']
-    @roster.outfielders.get.sort.should == ['a','b']
-    @roster.outfielders.length.should == 2
-    @roster.outfielders.size.should == 2
-    
+    @roster.simple_outfielders.should.be.empty
+    @roster.simple_outfielders << 'a' << 'a' << 'a'
+    @roster.simple_outfielders.should == ['a']
+    @roster.simple_outfielders.get.should == ['a']
+    @roster.simple_outfielders << 'b' << 'b'
+    @roster.simple_outfielders.to_s.should == 'a, b'
+    @roster.simple_outfielders.should == ['a','b']
+    @roster.simple_outfielders.members.should == ['a','b']
+    @roster.simple_outfielders.get.should == ['a','b']
+    @roster.simple_outfielders << 'c'
+    @roster.simple_outfielders.sort.should == ['a','b','c']
+    @roster.simple_outfielders.get.sort.should == ['a','b','c']
+    @roster.simple_outfielders.delete('c')
+    @roster.simple_outfielders.should == ['a','b']
+    @roster.simple_outfielders.get.sort.should == ['a','b']
+    @roster.simple_outfielders.length.should == 2
+    @roster.simple_outfielders.size.should == 2
+
     i = 0
-    @roster.outfielders.each do |st|
+    @roster.simple_outfielders.each do |st|
       i += 1
     end
-    i.should == @roster.outfielders.length
+    i.should == @roster.simple_outfielders.length
 
-    coll = @roster.outfielders.collect{|st| st}
+    coll = @roster.simple_outfielders.collect{|st| st}
     coll.should == ['a','b']
-    @roster.outfielders.should == ['a','b']
-    @roster.outfielders.get.should == ['a','b']
+    @roster.simple_outfielders.should == ['a','b']
+    @roster.simple_outfielders.get.should == ['a','b']
 
-    @roster.outfielders << 'c'
-    @roster.outfielders.member?('c').should.be.true
-    @roster.outfielders.include?('c').should.be.true
-    @roster.outfielders.member?('no').should.be.false
-    coll = @roster.outfielders.select{|st| st == 'c'}
+    @roster.simple_outfielders << 'c'
+    @roster.simple_outfielders.member?('c').should.be.true
+    @roster.simple_outfielders.include?('c').should.be.true
+    @roster.simple_outfielders.member?('no').should.be.false
+    coll = @roster.simple_outfielders.select{|st| st == 'c'}
     coll.should == ['c']
-    @roster.outfielders.sort.should == ['a','b','c']
+    @roster.simple_outfielders.sort.should == ['a','b','c']
   end
-  
+
   it "should handle set intersections and unions" do
     @roster_1.outfielders << 'a' << 'b' << 'c' << 'd' << 'e'
     @roster_2.outfielders << 'c' << 'd' << 'e' << 'f' << 'g'
@@ -633,7 +634,7 @@ describe Redis::Objects do
     Roster.all_players_online.get.sort.should == ['a','b']
     Roster.all_players_online.length.should == 2
     Roster.all_players_online.size.should == 2
-    
+
     i = 0
     Roster.all_players_online.each do |st|
       i += 1
@@ -653,7 +654,7 @@ describe Redis::Objects do
     coll.should == ['c']
     Roster.all_players_online.sort.should == ['a','b','c']
   end
-  
+
   it "should handle class-level global values" do
     Roster.last_player.should == nil
     Roster.last_player = 'Trevor Hoffman'
@@ -687,7 +688,7 @@ describe Redis::Objects do
     @roster2.all_player_stats.should == ['b','a']
     @roster2.all_player_stats << 'b'
     @roster.all_player_stats.should == ['b','a','b']
-    
+
     @roster.last_player.should == nil
     @roster.class.last_player = 'Trevor Hoffman'
     @roster.last_player.should == 'Trevor Hoffman'
@@ -709,7 +710,7 @@ describe Redis::Objects do
     @roster.player_stats.last.should == [1,2,3,[4,5]]
     @roster.player_stats.shift.should == {:json => 'data'}
   end
-  
+
   it "should handle sets of complex data types" do
     @roster.outfielders << {:a => 1} << {:b => 2}
     @roster.outfielders.member?({:b => 2})
@@ -728,7 +729,7 @@ describe Redis::Objects do
     end
     a.should.be.true
   end
-  
+
   it "should raise an exception if the timeout is exceeded" do
     @roster.redis.set(@roster.resort_lock.key, 1)
     error = nil
@@ -780,7 +781,7 @@ describe Redis::Objects do
   it "should handle new subclass objects" do
     @custom_roster.special.increment.should == 1
   end
-  
+
   it "should allow passing of increment/decrement to super class" do
     @custom_method_roster = CustomMethodRoster.new
     @custom_method_roster.counter.should.be.nil
