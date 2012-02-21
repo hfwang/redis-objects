@@ -26,9 +26,9 @@ class Redis
             restore(value) rescue value
           end
         else
-          if marshal_option.is_a?(Integer)
+          if marshal_option == Integer
             value.to_i
-          elsif marshal_option.is_a?(Float)
+          elsif marshal_option == Float
             value.to_f
           else
             marshal_option.restore(value) rescue value
