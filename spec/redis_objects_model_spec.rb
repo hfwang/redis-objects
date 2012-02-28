@@ -519,29 +519,29 @@ describe Redis::Objects do
   end
 
   it "should handle set intersections and unions" do
-    @roster_1.outfielders << 'a' << 'b' << 'c' << 'd' << 'e'
-    @roster_2.outfielders << 'c' << 'd' << 'e' << 'f' << 'g'
-    @roster_3.outfielders << 'a' << 'd' << 'g' << 'l' << 'm'
-    @roster_1.outfielders.sort.should == %w(a b c d e)
-    @roster_2.outfielders.sort.should == %w(c d e f g)
-    @roster_3.outfielders.sort.should == %w(a d g l m)
-    (@roster_1.outfielders & @roster_2.outfielders).sort.should == ['c','d','e']
-    @roster_1.outfielders.intersection(@roster_2.outfielders).sort.should == ['c','d','e']
-    @roster_1.outfielders.intersection(@roster_2.outfielders, @roster_3.outfielders).sort.should == ['d']
-    @roster_1.outfielders.intersect(@roster_2.outfielders).sort.should == ['c','d','e']
-    @roster_1.outfielders.inter(@roster_2.outfielders, @roster_3.outfielders).sort.should == ['d']
-    @roster_1.outfielders.interstore(INTERSTORE_KEY, @roster_2.outfielders).should == 3
+    @roster_1.simple_outfielders << 'a' << 'b' << 'c' << 'd' << 'e'
+    @roster_2.simple_outfielders << 'c' << 'd' << 'e' << 'f' << 'g'
+    @roster_3.simple_outfielders << 'a' << 'd' << 'g' << 'l' << 'm'
+    @roster_1.simple_outfielders.sort.should == %w(a b c d e)
+    @roster_2.simple_outfielders.sort.should == %w(c d e f g)
+    @roster_3.simple_outfielders.sort.should == %w(a d g l m)
+    (@roster_1.simple_outfielders & @roster_2.simple_outfielders).sort.should == ['c','d','e']
+    @roster_1.simple_outfielders.intersection(@roster_2.simple_outfielders).sort.should == ['c','d','e']
+    @roster_1.simple_outfielders.intersection(@roster_2.simple_outfielders, @roster_3.simple_outfielders).sort.should == ['d']
+    @roster_1.simple_outfielders.intersect(@roster_2.simple_outfielders).sort.should == ['c','d','e']
+    @roster_1.simple_outfielders.inter(@roster_2.simple_outfielders, @roster_3.simple_outfielders).sort.should == ['d']
+    @roster_1.simple_outfielders.interstore(INTERSTORE_KEY, @roster_2.simple_outfielders).should == 3
     @roster_1.redis.smembers(INTERSTORE_KEY).sort.should == ['c','d','e']
-    @roster_1.outfielders.interstore(INTERSTORE_KEY, @roster_2.outfielders, @roster_3.outfielders).should == 1
+    @roster_1.simple_outfielders.interstore(INTERSTORE_KEY, @roster_2.simple_outfielders, @roster_3.simple_outfielders).should == 1
     @roster_1.redis.smembers(INTERSTORE_KEY).sort.should == ['d']
 
-    (@roster_1.outfielders | @roster_2.outfielders).sort.should == ['a','b','c','d','e','f','g']
-    (@roster_1.outfielders + @roster_2.outfielders).sort.should == ['a','b','c','d','e','f','g']
-    @roster_1.outfielders.union(@roster_2.outfielders).sort.should == ['a','b','c','d','e','f','g']
-    @roster_1.outfielders.union(@roster_2.outfielders, @roster_3.outfielders).sort.should == ['a','b','c','d','e','f','g','l','m']
-    @roster_1.outfielders.unionstore(UNIONSTORE_KEY, @roster_2.outfielders).should == 7
+    (@roster_1.simple_outfielders | @roster_2.simple_outfielders).sort.should == ['a','b','c','d','e','f','g']
+    (@roster_1.simple_outfielders + @roster_2.simple_outfielders).sort.should == ['a','b','c','d','e','f','g']
+    @roster_1.simple_outfielders.union(@roster_2.simple_outfielders).sort.should == ['a','b','c','d','e','f','g']
+    @roster_1.simple_outfielders.union(@roster_2.simple_outfielders, @roster_3.simple_outfielders).sort.should == ['a','b','c','d','e','f','g','l','m']
+    @roster_1.simple_outfielders.unionstore(UNIONSTORE_KEY, @roster_2.simple_outfielders).should == 7
     @roster_1.redis.smembers(UNIONSTORE_KEY).sort.should == ['a','b','c','d','e','f','g']
-    @roster_1.outfielders.unionstore(UNIONSTORE_KEY, @roster_2.outfielders, @roster_3.outfielders).should == 9
+    @roster_1.simple_outfielders.unionstore(UNIONSTORE_KEY, @roster_2.simple_outfielders, @roster_3.simple_outfielders).should == 9
     @roster_1.redis.smembers(UNIONSTORE_KEY).sort.should == ['a','b','c','d','e','f','g','l','m']
   end
 
