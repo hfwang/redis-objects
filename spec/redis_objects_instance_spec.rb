@@ -579,11 +579,18 @@ describe Redis::HashKey do
     @hash['counter'].to_i.should == 2
   end
 
+  it "should respond to fill" do
+    @hash['foo'] = 'bar'
+
+    @hash.fill('abc' => '123', 'bang' => 'michael')
+    @hash['foo'].should == 'bar'
+    @hash['abc'].should == '123'
+    @hash['bang'].should == 'michael'
+  end
 
   after do
     @hash.clear
   end
-
 end
 
 describe Redis::CachedHashKey do
@@ -612,8 +619,8 @@ describe Redis::CachedHashKey do
                                  {:marshal_keys=>{'created_at'=>true}})
     end
     after do
-      $redis.instance_variable_set :@client, @old_client
       @hash.clear
+      $redis.instance_variable_set :@client, @old_client
     end
 
     it "should not eagerly load" do
