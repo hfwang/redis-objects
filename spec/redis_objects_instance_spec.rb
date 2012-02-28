@@ -1,13 +1,14 @@
 
 require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
 
+require 'redis/cached_hash_key'
 require 'redis/counter'
+require 'redis/hash_key'
 require 'redis/list'
-require 'redis/value'
 require 'redis/lock'
 require 'redis/set'
 require 'redis/sorted_set'
-require 'redis/hash_key'
+require 'redis/value'
 
 module CustomMarshal
   def self.dump(value)
@@ -575,6 +576,67 @@ describe Redis::HashKey do
     @hash.clear
   end
 
+end
+
+describe Redis::CachedHashKey do
+  describe "With Marshal" do
+    before do
+      @old_client = $redis.client
+      @client = $redis.client.dup
+      class << @client
+        def reset_call_count
+          @call_count = 0
+        end
+
+        def call_count
+          @call_count || 0
+        end
+
+        alias_method :call_without_count, :call
+        def call(*args)
+          puts args.inspect
+          @call_count = call_count + 1
+          call_without_count(*args)
+        end
+      end
+      $redis.instance_variable_set :@client, @client
+
+      @hash = Redis::CachedHashKey.new('test_hash', @redis,
+                                 {:marshal_keys=>{'created_at'=>true}})
+    end
+    after do
+      $redis.instance_variable_set :@client, @old_client
+      @hash.clear
+    end
+
+    it "should not eagerly load" do
+      @client.call_count.should == 0
+      @hash.cached?.should == false
+      @hash['created_at'] = Time.now
+      @client.call_count.should == 2
+      @hash.cached?.should == true
+      @hash['created_at'].class.should == Time
+    end
+
+    it "should cache all values and keep them cached" do
+      @client.call_count.should == 0
+      @hash.cached?.should == false
+      @hash.bulk_set({'created_at' => Time.now,
+                       'a' => '1',
+                       'b' => '2'})
+      @client.call_count.should == 2
+
+      @hash = Redis::CachedHashKey.new('test_hash', @redis,
+                                 {:marshal_keys=>{'created_at'=>true}})
+      @client.reset_call_count
+      @hash['a'].should == '1'
+      @hash['b'].should == '2'
+      @hash['created_at'].class.should == Time
+      @hash.cached?.should == true
+      # Make sure that only 1 redis call was made.
+      @client.call_count.should == 1
+    end
+  end
 end
 
 describe Redis::Set do
