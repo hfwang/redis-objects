@@ -451,6 +451,14 @@ describe Redis::HashKey do
     @hash.clear
   end
 
+  it "should handle easy marshaling syntax" do
+    @hash.options[:marshal] = Integer
+    @hash['abc'].should == nil
+    @hash.bulk_set('abc' => 1, 'def' => 2)
+    @hash['abc'].should == 1
+    @hash['def'].should == 2
+  end
+
   it "should handle complex marshaled values" do
     @hash.options[:marshal] = true
     @hash['abc'].should == nil
@@ -594,7 +602,6 @@ describe Redis::CachedHashKey do
 
         alias_method :call_without_count, :call
         def call(*args)
-          puts args.inspect
           @call_count = call_count + 1
           call_without_count(*args)
         end

@@ -26,7 +26,9 @@ class Redis
             restore(value) rescue value
           end
         else
-          if marshal_option == Integer
+          if value.nil?
+            nil
+          elsif marshal_option == Integer
             value.to_i
           elsif marshal_option == Float
             value.to_f
