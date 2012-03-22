@@ -2,6 +2,7 @@
 require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
 
 require 'redis/cached_hash_key'
+require 'redis/cached_set'
 require 'redis/counter'
 require 'redis/hash_key'
 require 'redis/list'
@@ -643,6 +644,64 @@ describe Redis::CachedHashKey do
         @hash['b'].should == '2'
         @hash['created_at'].class.should == Time
         @hash.cached?.should == true
+        # Make sure that only 1 redis call was made.
+      }.should == 1
+    end
+  end
+end
+
+describe Redis::CachedSet do
+  describe "With Marshal" do
+    before do
+      @set = Redis::CachedSet.new('test_set', $redis,
+                                 {:marshal => true})
+    end
+    after do
+      @set.clear
+    end
+
+    it "should not eagerly load" do
+      count_redis_calls {
+        @set = Redis::CachedSet.new('test_set', $redis,
+            {:marshal => true})
+        @set.cached?.should == false
+      }.should == 0
+    end
+
+    it "should coerce correctly" do
+      @set << Time.now
+      @set.cached?.should == true
+      @set.first.class.should == Time
+    end
+
+    it "should cache on write" do
+      t = Time.now
+      count_redis_calls {
+        @set << t
+        @set.cached?.should == true
+      }.should == 2
+      count_redis_calls {
+        @set.member?(t).should == true
+      }.should == 0
+    end
+
+    it "should cache all values and keep them cached" do
+      t = Time.now
+      count_redis_calls {
+        @set.cached?.should == false
+        @set << t << 1 << 'a'
+        @set.add(2)
+      }.should == 5
+
+      count_redis_calls {
+        @set = Redis::CachedSet.new('test_set', @redis,
+                                    {:marshal => true})
+        @set.member?(t).should == true
+        @set.member?(1).should == true
+        @set.member?('a').should == true
+        @set.member?(2).should == true
+        @set.size.should == 4
+        @set.cached?.should == true
         # Make sure that only 1 redis call was made.
       }.should == 1
     end
