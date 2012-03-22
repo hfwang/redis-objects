@@ -1,25 +1,24 @@
 require File.dirname(__FILE__) + '/base_object'
 
 class Redis
-  attr_reader :hash_key, :cached
+  attr_reader :cached
 
   #
   # Class representing a Redis hash that locally caches the entire hash's
   # contents.
   #
-  class CachedHashKey
+  class CachedHashKey < HashKey
     def initialize(key, *args)
-      @hash_key = Redis::HashKey.new(key, *args)
-
-      maybe_cache_values if @hash_key.options[:eager]
+      super
+      maybe_cache_values if self.options[:eager]
     end
 
-    def []=(field, value)
+    def store(field, value)
       maybe_cache_values
       @cached[field.to_s] = value
-      @hash_key[field.to_s] = value
+      super
     end
-    alias_method :store, :[]=
+    alias_method :[]=, :store
 
     def [](field)
       maybe_cache_values
@@ -38,7 +37,7 @@ class Redis
     def delete(field)
       maybe_cache_values
       @cached.delete(field.to_s)
-      @hash_key.delete(field)
+      super
     end
 
     def keys
@@ -77,19 +76,19 @@ class Redis
 
     def clear
       @cached = nil
-      @hash_key.clear
+      super
     end
 
     def bulk_set(*args)
       maybe_cache_values
       @cached.update(*args)
-      @hash_key.bulk_set(*args)
+      super
     end
     alias_method :update, :bulk_set
 
     def incrby(field, val = 1)
       maybe_cache_values
-      @cached[field.to_s] = @hash_key.incrby(field, val)
+      @cached[field.to_s] = super(field, val)
     end
     alias_method :incr, :incrby
 
@@ -100,7 +99,7 @@ class Redis
     def maybe_cache_values
       return if cached?
 
-      @cached = @hash_key.all()
+      @cached = self.all()
     end
   end
 end
