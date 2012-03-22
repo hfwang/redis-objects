@@ -39,3 +39,29 @@ SORT_LIMIT = {:limit => [2, 2]}
 SORT_BY = {:by => 'm_*'}
 SORT_GET = {:get => 'spec/*/sorted'}.merge!(SORT_LIMIT)
 SORT_STORE = {:store => "spec/aftersort"}.merge!(SORT_GET)
+
+def count_redis_calls(redis=$redis)
+  old_client = redis.client
+  client = redis.client.dup
+  class << client
+    def reset_call_count
+      @call_count = 0
+    end
+
+    def call_count
+      @call_count || 0
+    end
+
+    alias_method :call_without_count, :call
+    def call(*args)
+      @call_count = call_count + 1
+      call_without_count(*args)
+    end
+  end
+  redis.instance_variable_set :@client, client
+
+  yield
+
+  redis.instance_variable_set :@client, old_client
+  return client.call_count
+end

@@ -596,59 +596,55 @@ end
 describe Redis::CachedHashKey do
   describe "With Marshal" do
     before do
-      @old_client = $redis.client
-      @client = $redis.client.dup
-      class << @client
-        def reset_call_count
-          @call_count = 0
-        end
-
-        def call_count
-          @call_count || 0
-        end
-
-        alias_method :call_without_count, :call
-        def call(*args)
-          @call_count = call_count + 1
-          call_without_count(*args)
-        end
-      end
-      $redis.instance_variable_set :@client, @client
-
-      @hash = Redis::CachedHashKey.new('test_hash', @redis,
+      @hash = Redis::CachedHashKey.new('test_hash', $redis,
                                  {:marshal_keys=>{'created_at'=>true}})
     end
     after do
       @hash.clear
-      $redis.instance_variable_set :@client, @old_client
     end
 
     it "should not eagerly load" do
-      @client.call_count.should == 0
-      @hash.cached?.should == false
+      count_redis_calls {
+        @hash = Redis::CachedHashKey.new('test_hash', $redis,
+            {:marshal_keys=>{'created_at'=>true}})
+        @hash.cached?.should == false
+      }.should == 0
+    end
+
+    it "should coerce correctly" do
       @hash['created_at'] = Time.now
-      @client.call_count.should == 2
       @hash.cached?.should == true
       @hash['created_at'].class.should == Time
     end
 
-    it "should cache all values and keep them cached" do
-      @client.call_count.should == 0
-      @hash.cached?.should == false
-      @hash.bulk_set({'created_at' => Time.now,
-                       'a' => '1',
-                       'b' => '2'})
-      @client.call_count.should == 2
+    it "should cache on write" do
+      t = Time.now
+      count_redis_calls {
+        @hash['created_at'] = t
+        @hash.cached?.should == true
+      }.should == 2
+      count_redis_calls {
+        @hash['created_at'].should == t
+      }.should == 0
+    end
 
-      @hash = Redis::CachedHashKey.new('test_hash', @redis,
-                                 {:marshal_keys=>{'created_at'=>true}})
-      @client.reset_call_count
-      @hash['a'].should == '1'
-      @hash['b'].should == '2'
-      @hash['created_at'].class.should == Time
-      @hash.cached?.should == true
-      # Make sure that only 1 redis call was made.
-      @client.call_count.should == 1
+    it "should cache all values and keep them cached" do
+      count_redis_calls {
+        @hash.cached?.should == false
+        @hash.bulk_set({'created_at' => Time.now,
+                         'a' => '1',
+                         'b' => '2'})
+      }.should == 2
+
+      count_redis_calls {
+        @hash = Redis::CachedHashKey.new('test_hash', @redis,
+                                         {:marshal_keys=>{'created_at'=>true}})
+        @hash['a'].should == '1'
+        @hash['b'].should == '2'
+        @hash['created_at'].class.should == Time
+        @hash.cached?.should == true
+        # Make sure that only 1 redis call was made.
+      }.should == 1
     end
   end
 end
