@@ -75,7 +75,7 @@ class Redis
     end
 
     def clear
-      @cached = nil
+      @cached = {}
       super
     end
 
