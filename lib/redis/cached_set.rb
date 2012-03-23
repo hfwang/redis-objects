@@ -1,4 +1,5 @@
 require File.dirname(__FILE__) + '/base_object'
+require File.dirname(__FILE__) + '/set'
 
 class Redis
   attr_reader :cached
@@ -6,7 +7,7 @@ class Redis
   # Class representing a Redis set that locally caches the entire set's
   # contents.
   #
-  class CachedSet < Set
+  class CachedSet < ::Redis::Set
     def initialize(key, *args)
       super
 
@@ -16,21 +17,18 @@ class Redis
     alias_method :uncached_members, :members
 
     def <<(value)
-      maybe_cache_values
-      @cached << value
+      @cached << value if cached?
       super
     end
 
     def add(value)
-      maybe_cache_values
-      @cached.add(value)
+      @cached.add(value) if cached?
       super
     end
 
     def pop
-      maybe_cache_values
       e = super
-      @cached.delete(e)
+      @cached.delete(e) if cached?
       return e
     end
 
@@ -47,8 +45,7 @@ class Redis
     alias_method :include?, :member?
 
     def delete(value)
-      maybe_cache_values
-      @cached.delete(value)
+      @cached.delete(value) if cached?
       super
     end
 

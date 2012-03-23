@@ -595,116 +595,113 @@ describe Redis::HashKey do
 end
 
 describe Redis::CachedHashKey do
-  describe "With Marshal" do
-    before do
+  before do
+    @hash = Redis::CachedHashKey.new('test_hash', $redis,
+                               {:marshal_keys=>{'created_at'=>true}})
+  end
+  after do
+    @hash.clear
+  end
+
+  it "should not eagerly load" do
+    count_redis_calls {
       @hash = Redis::CachedHashKey.new('test_hash', $redis,
-                                 {:marshal_keys=>{'created_at'=>true}})
-    end
-    after do
-      @hash.clear
-    end
+          {:marshal_keys=>{'created_at'=>true}})
+      @hash.cached?.should == false
+    }.should == 0
+  end
 
-    it "should not eagerly load" do
-      count_redis_calls {
-        @hash = Redis::CachedHashKey.new('test_hash', $redis,
-            {:marshal_keys=>{'created_at'=>true}})
-        @hash.cached?.should == false
-      }.should == 0
-    end
+  it "should coerce correctly" do
+    @hash['created_at'] = Time.now
+    @hash.cached?.should == false
+    @hash['created_at'].class.should == Time
+    @hash.cached?.should == true
+  end
 
-    it "should coerce correctly" do
-      @hash['created_at'] = Time.now
-      @hash.cached?.should == true
+  it "should not cache on write" do
+    t = Time.now
+    count_redis_calls {
+      @hash['created_at'] = t
+      @hash.cached?.should == false
+    }.should == 1
+    count_redis_calls {
+      @hash['created_at'].should == t
+    }.should == 1
+  end
+
+  it "should cache all values and keep them cached" do
+    count_redis_calls {
+      @hash.cached?.should == false
+      @hash.bulk_set({'created_at' => Time.now,
+                       'a' => '1',
+                       'b' => '2'})
+    }.should == 1
+
+    count_redis_calls {
+      @hash = Redis::CachedHashKey.new('test_hash', @redis,
+                                       {:marshal_keys=>{'created_at'=>true}})
+      @hash['a'].should == '1'
+      @hash['b'].should == '2'
       @hash['created_at'].class.should == Time
-    end
-
-    it "should cache on write" do
-      t = Time.now
-      count_redis_calls {
-        @hash['created_at'] = t
-        @hash.cached?.should == true
-      }.should == 2
-      count_redis_calls {
-        @hash['created_at'].should == t
-      }.should == 0
-    end
-
-    it "should cache all values and keep them cached" do
-      count_redis_calls {
-        @hash.cached?.should == false
-        @hash.bulk_set({'created_at' => Time.now,
-                         'a' => '1',
-                         'b' => '2'})
-      }.should == 2
-
-      count_redis_calls {
-        @hash = Redis::CachedHashKey.new('test_hash', @redis,
-                                         {:marshal_keys=>{'created_at'=>true}})
-        @hash['a'].should == '1'
-        @hash['b'].should == '2'
-        @hash['created_at'].class.should == Time
-        @hash.cached?.should == true
-        # Make sure that only 1 redis call was made.
-      }.should == 1
-    end
+      @hash.cached?.should == true
+    }.should == 1
   end
 end
 
 describe Redis::CachedSet do
-  describe "With Marshal" do
-    before do
+  before do
+    @set = Redis::CachedSet.new('test_set', $redis,
+                               {:marshal => true})
+  end
+  after do
+    @set.clear
+  end
+
+  it "should not eagerly load" do
+    count_redis_calls {
       @set = Redis::CachedSet.new('test_set', $redis,
-                                 {:marshal => true})
-    end
-    after do
-      @set.clear
-    end
+          {:marshal => true})
+      @set.cached?.should == false
+    }.should == 0
+  end
 
-    it "should not eagerly load" do
-      count_redis_calls {
-        @set = Redis::CachedSet.new('test_set', $redis,
-            {:marshal => true})
-        @set.cached?.should == false
-      }.should == 0
-    end
+  it "should coerce correctly" do
+    @set << Time.now
+    @set.cached?.should == false
+    @set.first.class.should == Time
+    @set.cached?.should == true
+  end
 
-    it "should coerce correctly" do
-      @set << Time.now
+  it "should not cache on write" do
+    t = Time.now
+    count_redis_calls {
+      @set << t
+      @set.cached?.should == false
+    }.should == 1
+    count_redis_calls {
+      @set.member?(t).should == true
+    }.should == 1
+  end
+
+  it "should cache all values and keep them cached" do
+    t = Time.now
+    count_redis_calls {
+      @set.cached?.should == false
+      @set << t << 1 << 'a'
+      @set.add(2)
+    }.should == 4
+
+    count_redis_calls {
+      @set = Redis::CachedSet.new('test_set', @redis,
+                                  {:marshal => true})
+      @set.member?(t).should == true
+      @set.member?(1).should == true
+      @set.member?('a').should == true
+      @set.member?(2).should == true
+      @set.size.should == 4
       @set.cached?.should == true
-      @set.first.class.should == Time
-    end
-
-    it "should cache on write" do
-      t = Time.now
-      count_redis_calls {
-        @set << t
-        @set.cached?.should == true
-      }.should == 2
-      count_redis_calls {
-        @set.member?(t).should == true
-      }.should == 0
-    end
-
-    it "should cache all values and keep them cached" do
-      t = Time.now
-      count_redis_calls {
-        @set.cached?.should == false
-        @set << t << 1 << 'a'
-        @set.add(2)
-      }.should == 5
-
-      count_redis_calls {
-        @set = Redis::CachedSet.new('test_set', @redis,
-                                    {:marshal => true})
-        @set.member?(t).should == true
-        @set.member?(1).should == true
-        @set.member?('a').should == true
-        @set.member?(2).should == true
-        @set.size.should == 4
-        @set.cached?.should == true
-        # Make sure that only 1 redis call was made.
-      }.should == 1
-    end
+      # Make sure that only 1 redis call was made.
+    }.should == 1
   end
 end
 
