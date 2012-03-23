@@ -5,6 +5,7 @@ class Redis
     def self.included(klass)
       klass.send :include, Redis::Objects
       klass.extend ClassMethods
+      klass.send :counter, :ids, :global => true
     end
 
     def initialize(new_attrs = {})
@@ -23,8 +24,20 @@ class Redis
     end
 
     def save
+      if self.id.nil?
+        self.id = self.class.claim_next_id
+      end
+
       old_attributes.update(@attributes)
       @attributes.clear
+    end
+
+    def destroy
+      old_attributes.clear
+    end
+
+    def redis_key
+      old_attributes.key
     end
 
     module ClassMethods
@@ -38,12 +51,22 @@ class Redis
         self.new(:id => id)
       end
 
+      def last_generated_id
+        return self.ids.value
+      end
+
+      def claim_next_id
+        return self.ids.increment
+      end
+
       def attributes
         @attributes
       end
+
       def defaults
         @defaults ||= {}
       end
+
       def defaults=(value)
         @defaults = value
       end

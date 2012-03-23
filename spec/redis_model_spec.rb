@@ -25,9 +25,19 @@ describe Redis::Model do
         :positions => {}})
   end
 
+  after do
+    Player.ids.clear
+  end
+
   it "should use defaults sanely" do
     @player1.name.should == nil
     @player1.level.should == 1
+  end
+
+  it "should respect persistent attributes typing" do
+    p = Player.find(2)
+    p.name.class.should == String
+    p.points.is_a?(Fixnum).should == true
   end
 
   it "should find pre-existing data" do
@@ -60,5 +70,11 @@ describe Redis::Model do
     player2 = Player.find(2)
     player2.positions[:pitcher].should == true
     player2.positions[:catcher].should == false
+  end
+
+  it "should delete the key on destroy" do
+    $redis.exists(@player2.redis_key).should == true
+    @player2.destroy
+    $redis.exists(@player2.redis_key).should == false
   end
 end
