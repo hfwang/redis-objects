@@ -10,10 +10,12 @@ class Roster
   counter :pitchers, :limit => :max_pitchers
   counter :basic
   hash_key :contact_information, :marshal_keys=>{'updated_at'=>true}
+  cached_hash_key :cached_contact_information, :marshal_keys=>{'updated_at'=>true}
   lock :resort, :timeout => 2
   value :starting_pitcher, :marshal => true
   list :player_stats, :marshal => true
   set :outfielders, :marshal => true
+  cached_set :cached_outfielders, :marshal => true
   set :simple_outfielders, :marshal => false
   sorted_set :rank
 
@@ -85,6 +87,7 @@ describe Redis::Objects do
     @roster.player_stats.clear
     @roster.outfielders.clear
     @roster.contact_information.clear
+    @roster.cached_contact_information.clear
     @roster_1.outfielders.clear
     @roster_2.outfielders.clear
     @roster_3.outfielders.clear
@@ -107,6 +110,12 @@ describe Redis::Objects do
 
     @custom_roster.basic.reset
     @custom_roster.special.reset
+  end
+
+  after do
+    # Clear cached keys at end so they are not precached in the before method.
+    @roster.cached_contact_information.clear
+    @roster.cached_outfielders.clear
   end
 
   it "should provide a connection method" do
@@ -132,6 +141,15 @@ describe Redis::Objects do
     k = "Roster:#{Time.now.strftime('%Y-%m-%dT%H')}:daily"
     @roster.daily.incr
     @roster.redis.get(k).should == '1'
+  end
+
+  it "should be able to get/set *cached* contact info" do
+    @roster.cached_contact_information['John_Phone'] = '123415352'
+    @roster.cached_contact_information['John_Address'] = '123 LANE'
+    @roster.cached_contact_information['John_Phone'].should == '123415352'
+    @roster.cached_contact_information['John_Address'].should == '123 LANE'
+    @roster.cached_contact_information['asdasd'].should.be.nil
+    @roster.cached_contact_information.size.should == 2
   end
 
   it "should be able to get/set contact info" do
@@ -497,6 +515,15 @@ describe Redis::Objects do
     coll.should == ['a','a']
     @roster.player_stats.should == ['a','c','f','j','a']
     @roster.player_stats.get.should == ['a','c','f','j','a']
+  end
+
+  it "should handle cached sets of values" do
+    @roster.cached_outfielders.should.be.empty
+    @roster.cached_outfielders << 'a' << 'a' << 'a'
+    @roster.cached_outfielders.get.should == ::Set.new('a')
+    @roster.cached_outfielders << 'b' << 'b'
+    @roster.cached_outfielders.include?('b').should == true
+    @roster.cached_outfielders.include?('a').should == true
   end
 
   it "should handle sets of simple values" do

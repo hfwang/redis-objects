@@ -38,6 +38,8 @@ class Redis
   module Objects
     dir = File.expand_path(__FILE__.sub(/\.rb$/,''))
 
+    autoload :CachedHashKeys, File.join(dir, 'cached_hash_keys')
+    autoload :CachedSets, File.join(dir, 'cached_sets')
     autoload :Counters, File.join(dir, 'counters')
     autoload :Lists, File.join(dir, 'lists')
     autoload :Locks, File.join(dir, 'locks')
@@ -63,6 +65,8 @@ class Redis
         klass.extend ClassMethods
 
         # Pull in each object type
+        klass.send :include, Redis::Objects::CachedHashKeys
+        klass.send :include, Redis::Objects::CachedSets
         klass.send :include, Redis::Objects::Counters
         klass.send :include, Redis::Objects::Lists
         klass.send :include, Redis::Objects::Locks
