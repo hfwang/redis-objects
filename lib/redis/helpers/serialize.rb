@@ -24,24 +24,23 @@ class Redis
 
       def from_redis!(value, marshal_option)
         return value unless marshal_option
-        if marshal_option.equal? true
-          case value
-          when Array
-            value.collect{|v| from_redis(v, marshal_option)}
-          when Hash
-            value.inject({}) { |h, (k, v)| h[k] = from_redis(v, marshal_option); h }
-          else
-            restore(value) rescue value
-          end
+
+        case value
+        when NilClass
+          nil
+        when Array
+          value.collect{|v| from_redis!(v, marshal_option)}
+        when Hash
+          value.inject({}) { |h, (k, v)| h[k] = from_redis!(v, marshal_option); h }
         else
-          if value.nil?
-            nil
-          elsif marshal_option == Symbol
+          if marshal_option == Symbol
             value.to_sym
           elsif marshal_option == Integer
             value.to_i
           elsif marshal_option == Float
             value.to_f
+          elsif marshal_option === true
+            restore(value) rescue value
           else
             marshal_option.restore(value) rescue value
           end
