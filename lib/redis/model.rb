@@ -5,7 +5,7 @@ class Redis
     def self.included(klass)
       klass.send :include, Redis::Objects
       klass.extend ClassMethods
-      klass.send :counter, :ids, :global => true
+      klass.send :counter, :id_generator, :global => true
     end
 
     def initialize(new_attrs = {})
@@ -20,11 +20,11 @@ class Redis
       end
       @attributes.update(symbolized_keys)
 
-      old_attributes.maybe_cache_values
+      old_attributes.maybe_cache_values if @attributes.has_key?(:id)
     end
 
     def save
-      if self.id.nil?
+      if !@attributes.has_key?(:id)
         self.id = self.class.claim_next_id
       end
 
@@ -52,11 +52,11 @@ class Redis
       end
 
       def last_generated_id
-        return self.ids.value
+        return self.id_generator.value
       end
 
       def claim_next_id
-        return self.ids.increment
+        return self.id_generator.increment
       end
 
       def attributes

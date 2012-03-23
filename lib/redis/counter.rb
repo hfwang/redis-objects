@@ -81,7 +81,7 @@ class Redis
         end
       EndOverload
     end
-   
+
     private
 
     # Implements atomic increment/decrement blocks

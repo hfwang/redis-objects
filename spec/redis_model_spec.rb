@@ -15,6 +15,11 @@ class Player
   self.defaults = {:level => 1}
 end
 
+class SimplePlayer
+  include Redis::Model
+  persistent_attributes(:name => String)
+end
+
 describe Redis::Model do
   before do
     @player1 = Player.new({:id => 1})
@@ -26,7 +31,8 @@ describe Redis::Model do
   end
 
   after do
-    Player.ids.clear
+    Player.id_generator.clear
+    SimplePlayer.id_generator.clear
   end
 
   it "should use defaults sanely" do
@@ -76,5 +82,17 @@ describe Redis::Model do
     $redis.exists(@player2.redis_key).should == true
     @player2.destroy
     $redis.exists(@player2.redis_key).should == false
+  end
+
+  it "should autogenerate IDs" do
+    players = []
+    ['A', 'B', 'C'].each do |name|
+      players << SimplePlayer.create(:name => name)
+    end
+    players.size.should == 3
+    players[0].id.should == 1
+    players[1].id.should == 2
+    players[2].id.should == 3
+    SimplePlayer.last_generated_id.should == 3
   end
 end
