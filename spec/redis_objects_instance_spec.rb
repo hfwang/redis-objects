@@ -784,6 +784,15 @@ describe Redis::Set do
     @set_3.clear
   end
 
+  it "should handle simple type conversion" do
+    @set.options[:marshal] = Integer
+
+    @set << 1 << 2
+    @set.members.include?(1).should == true
+    @set.members.include?(2).should == true
+    @set.size.should == 2
+  end
+
   it "should handle sets of simple values" do
     @set.should.be.empty
     @set << 'a' << 'a' << 'a'
