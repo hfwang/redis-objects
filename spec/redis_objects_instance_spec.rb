@@ -1,4 +1,3 @@
-
 require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
 
 require 'redis/cached_hash_key'
@@ -418,12 +417,23 @@ describe Redis::HashKey do
     before do
       @hash = Redis::HashKey.new('test_hash', $redis,
                                  {:marshal_keys=>{'created_at'=>true}})
+    end
+
+    after do
       @hash.clear
     end
 
     it "should marshal specified keys" do
       @hash['created_at'] = Time.now
       @hash['created_at'].class.should == Time
+    end
+
+    it "should coerce keys to different types" do
+      @hash = Redis::HashKey.new('test_hash', $redis,
+                                 {:marshal_keys => {:created_at => true},
+                                  :key_marshaller => Symbol})
+      @hash[:created_at] = Time.now
+      @hash[:created_at].class.should == Time
     end
 
     it "should not marshal unless required" do
@@ -482,6 +492,7 @@ describe Redis::HashKey do
     @hash.options[:marshal] = true
     @hash.bulk_set('abc' => [[1,2], {:t3 => 4}], 'def' => [[6,8], {:t4 => 8}])
     hsh = @hash.bulk_get('abc', 'def', 'foo')
+    puts "#{'-' * 80}"
     hsh['abc'].should == [[1,2], {:t3 => 4}]
     hsh['def'].should == [[6,8], {:t4 => 8}]
     hsh['foo'].should.be.nil
@@ -645,6 +656,26 @@ describe Redis::CachedHashKey do
       @hash['created_at'].class.should == Time
       @hash.cached?.should == true
     }.should == 1
+  end
+
+  it "should be string/symbol indifferent if using a key marshaller" do
+    @hash.options[:key_marshaller] = Symbol
+    @hash.bulk_set({:a => '1', 'b' => '2'})
+    @hash[:a].should == '1'
+    @hash['a'].should == '1'
+
+    @hash[:b].should == '2'
+    @hash['b'].should == '2'
+  end
+
+  it "should allow specifying the type of the key" do
+    @hash.options[:marshal] = Integer
+    @hash.options[:key_marshaller] = Integer
+    @hash.bulk_set({1 => 2, 3 => 4})
+    @hash[1].should == 2
+    @hash[1] = 3
+    @hash[1].should == 3
+    @hash[3].should == 4
   end
 end
 

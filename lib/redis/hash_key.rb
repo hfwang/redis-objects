@@ -19,6 +19,7 @@ class Redis
       marshal_keys = Hash.new { |hash, key| @options[:marshal] }
       marshal_keys.update(@options[:marshal_keys]) if @options[:marshal_keys]
       @options[:marshal_keys] = marshal_keys
+      @options[:key_marshaller] ||= String
     end
 
     # Needed since Redis::Hash masks bare Hash in redis.rb
@@ -29,26 +30,25 @@ class Redis
     # Sets a field to value
     def []=(field, value)
       store(field, value)
-    end
-
-    # Gets the value of a field
-    def [](field)
-      fetch(field)
+      return value
     end
 
     # Redis: HSET
     def store(field, value)
-      redis.hset(key, field, to_redis(value, options[:marshal_keys][field]))
+      redis.hset(key, field = to_field_name(field),
+                 to_redis(value, options[:marshal_keys][field]))
     end
 
     # Redis: HGET
     def fetch(field)
-      from_redis redis.hget(key, field), options[:marshal_keys][field]
+      from_redis(redis.hget(key, field = to_field_name(field)),
+                 options[:marshal_keys][field])
     end
+    alias_method :[], :fetch
 
     # Verify that a field exists. Redis: HEXISTS
     def has_key?(field)
-      redis.hexists(key, field)
+      redis.hexists(key, to_field_name(field))
     end
     alias_method :include?, :has_key?
     alias_method :key?, :has_key?
@@ -56,7 +56,7 @@ class Redis
 
     # Delete field. Redis: HDEL
     def delete(field)
-      redis.hdel(key, field)
+      redis.hdel(key, to_field_name(field))
     end
 
     # Return all the keys of the hash. Redis: HKEYS
@@ -72,8 +72,11 @@ class Redis
 
     # Retrieve the entire hash.  Redis: HGETALL
     def all
-      h = redis.hgetall(key) || {}
-      h.each { |k,v| h[k] = from_redis(v, options[:marshal_keys][k]) }
+      h = {}
+      (redis.hgetall(key) || {}).each do |k,v|
+        k = from_field_name(k)
+        h[k] = from_redis(v, options[:marshal_keys][k])
+      end
       h
     end
     alias_method :clone, :all
@@ -107,30 +110,32 @@ class Redis
 
     # Clears the dict of all keys/values. Redis: DEL
     def clear
-      redis.del(key)
+      redis.del(to_field_name(key))
     end
 
     # Set keys in bulk, takes a hash of field/values {'field1' => 'val1'}. Redis: HMSET
     def bulk_set(*args)
       raise ArgumentError, "Argument to bulk_set must be hash of key/value pairs" unless args.last.is_a?(::Hash)
-      redis.hmset(key, *args.last.inject([]){ |arr,kv|
-        arr + [kv[0], to_redis(kv[1], options[:marshal_keys][kv[0]])]
+      redis.hmset(key, *args.last.inject([]){ |arr, kv|
+        k = to_field_name(kv[0])
+        arr + [k, to_redis(kv[1], options[:marshal_keys][k])]
       })
     end
     alias_method :update, :bulk_set
 
     # Set keys in bulk if they do not exist. Takes a hash of field/values {'field1' => 'val1'}. Redis: HSETNX
     def fill(pairs={})
-      raise ArgumentErorr, "Arugment to fill must be a hash of key/value pairs" unless pairs.is_a?(::Hash)
+      raise ArgumentError, "Argument to fill must be a hash of key/value pairs" unless pairs.is_a?(::Hash)
       pairs.each do |field, value|
-        redis.hsetnx(key, field, to_redis(value, options[:marshal_keys][field]))
+        redis.hsetnx(key, field = to_field_name(field),
+                     to_redis(value, options[:marshal_keys][field]))
       end
     end
 
     # Get keys in bulk, takes an array of fields as arguments. Redis: HMGET
     def bulk_get(*fields)
       hsh = {}
-      res = redis.hmget(key, *fields.flatten)
+      res = redis.hmget(key, *fields.flatten.map {|k| to_field_name(k)})
       fields.each do |k|
         hsh[k] = from_redis(res.shift, options[:marshal_keys][k])
       end
@@ -139,7 +144,7 @@ class Redis
 
     # Increment value by integer at field. Redis: HINCRBY
     def incrby(field, val = 1)
-      ret = redis.hincrby(key, field, val)
+      ret = redis.hincrby(key, to_field_name(field), val)
       unless ret.is_a? Array
         ret.to_i
       else
@@ -148,6 +153,12 @@ class Redis
     end
     alias_method :incr, :incrby
 
+    def to_field_name(field)
+      to_redis(field, options[:key_marshaller])
+    end
+
+    def from_field_name(field)
+      from_redis(field, options[:key_marshaller])
+    end
   end
 end
-

@@ -1,4 +1,5 @@
 require 'rubygems'  # poor people still on 1.8
+require 'pp'
 gem 'redis', '>= 2.1.1'
 require 'redis'
 

@@ -15,7 +15,7 @@ class Redis
     end
 
     def store(field, value)
-      @cached[field.to_s] = value if cached?
+      @cached[to_field_name(field)] = value if cached?
       super
     end
     alias_method :[]=, :store
@@ -23,19 +23,19 @@ class Redis
 
     def [](field)
       maybe_cache_values
-      @cached[field.to_s]
+      @cached[to_field_name(field)]
     end
 
     def has_key?(field)
       maybe_cache_values
-      @cached.has_key? field.to_s
+      @cached.has_key?(to_field_name(field))
     end
     alias_method :include?, :has_key?
     alias_method :key?, :has_key?
     alias_method :member?, :has_key?
 
     def delete(field)
-      @cached.delete(field.to_s) if cached?
+      @cached.delete(to_field_name(field)) if cached?
       super
     end
 
@@ -78,15 +78,19 @@ class Redis
       super
     end
 
-    def bulk_set(*args)
-      @cached.update(*args) if cached?
+    def bulk_set(other_hash)
+      if cached?
+        other_hash.each do |k, v|
+          @cached[to_field_name(k)] = v
+        end
+      end
       super
     end
     alias_method :update, :bulk_set
 
     def incrby(field, val = 1)
       maybe_cache_values
-      @cached[field.to_s] = super(field, val)
+      @cached[to_field_name(field)] = super(field, val)
     end
     alias_method :incr, :incrby
 
@@ -95,9 +99,12 @@ class Redis
     end
 
     def maybe_cache_values
-      return if cached?
+      return @cached if cached?
 
-      @cached = self.all()
+      @cached = {}
+      self.all().each do |k, v|
+        @cached[to_field_name(k)] = v
+      end
     end
   end
 end
