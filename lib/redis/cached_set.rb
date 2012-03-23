@@ -2,12 +2,13 @@ require File.dirname(__FILE__) + '/base_object'
 require File.dirname(__FILE__) + '/set'
 
 class Redis
-  attr_reader :cached
   #
   # Class representing a Redis set that locally caches the entire set's
   # contents.
   #
   class CachedSet < ::Redis::Set
+    attr_reader :cache
+
     def initialize(key, *args)
       super
 
@@ -17,35 +18,35 @@ class Redis
     alias_method :uncached_members, :members
 
     def <<(value)
-      @cached << value if cached?
+      @cache << value if cached?
       super
     end
 
     def add(value)
-      @cached.add(value) if cached?
+      @cache.add(value) if cached?
       super
     end
 
     def pop
       e = super
-      @cached.delete(e) if cached?
+      @cache.delete(e) if cached?
       return e
     end
 
     def members
       maybe_cache_values
-      return @cached.dup
+      return @cache.dup
     end
     alias_method :get, :members
 
     def member?(value)
       maybe_cache_values
-      return @cached.member?(value)
+      return @cache.member?(value)
     end
     alias_method :include?, :member?
 
     def delete(value)
-      @cached.delete(value) if cached?
+      @cache.delete(value) if cached?
       super
     end
 
@@ -53,9 +54,9 @@ class Redis
     def delete_if(&block)
       maybe_cache_values
       res = false
-      @cached.each do |m|
+      @cache.each do |m|
         if block.call(m)
-          @cached.delete(m)
+          @cache.delete(m)
           res = redis.srem(key, to_redis(m))
         end
       end
@@ -64,29 +65,29 @@ class Redis
 
     def each(&block)
       maybe_cache_values
-      @cached.each(&block)
+      @cache.each(&block)
     end
 
     def length
       maybe_cache_values
-      @cached.size
+      @cache.size
     end
     alias_method :size, :length
     alias_method :count, :length
 
     def del
-      @cached = []
+      @cache = []
       redis.del key
     end
     alias_method :clear, :del
 
     def cached?
-      !@cached.nil?
+      !@cache.nil?
     end
 
     def maybe_cache_values
       return if cached?
-      @cached = ::Set.new(uncached_members)
+      @cache = ::Set.new(uncached_members)
     end
   end
 end

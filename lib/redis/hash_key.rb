@@ -35,13 +35,13 @@ class Redis
 
     # Redis: HSET
     def store(field, value)
-      redis.hset(key, field = to_field_name(field),
+      redis.hset(key, to_field_name(field),
                  to_redis(value, options[:marshal_keys][field]))
     end
 
     # Redis: HGET
     def fetch(field)
-      from_redis(redis.hget(key, field = to_field_name(field)),
+      from_redis(redis.hget(key, to_field_name(field)),
                  options[:marshal_keys][field])
     end
     alias_method :[], :fetch
@@ -110,7 +110,7 @@ class Redis
 
     # Clears the dict of all keys/values. Redis: DEL
     def clear
-      redis.del(to_field_name(key))
+      redis.del(key)
     end
 
     # Set keys in bulk, takes a hash of field/values {'field1' => 'val1'}. Redis: HMSET
@@ -118,7 +118,7 @@ class Redis
       raise ArgumentError, "Argument to bulk_set must be hash of key/value pairs" unless args.last.is_a?(::Hash)
       redis.hmset(key, *args.last.inject([]){ |arr, kv|
         k = to_field_name(kv[0])
-        arr + [k, to_redis(kv[1], options[:marshal_keys][k])]
+        arr + [k, to_redis(kv[1], options[:marshal_keys][kv[0]])]
       })
     end
     alias_method :update, :bulk_set
@@ -127,7 +127,7 @@ class Redis
     def fill(pairs={})
       raise ArgumentError, "Argument to fill must be a hash of key/value pairs" unless pairs.is_a?(::Hash)
       pairs.each do |field, value|
-        redis.hsetnx(key, field = to_field_name(field),
+        redis.hsetnx(key, to_field_name(field),
                      to_redis(value, options[:marshal_keys][field]))
       end
     end
@@ -154,11 +154,11 @@ class Redis
     alias_method :incr, :incrby
 
     def to_field_name(field)
-      to_redis(field, options[:key_marshaller])
+      to_redis!(field, options[:key_marshaller])
     end
 
     def from_field_name(field)
-      from_redis(field, options[:key_marshaller])
+      from_redis!(field, options[:key_marshaller])
     end
   end
 end

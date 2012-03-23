@@ -55,6 +55,5 @@ class Redis
         from_redis redis.sort(key, options)
       end
     end
-
   end
 end

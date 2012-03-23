@@ -4,12 +4,13 @@ class Redis
       include Marshal
 
       def to_redis(value, marshal=nil)
-        marshal_option = marshal.nil? ? options[:marshal] : marshal
+        to_redis!(value, marshal.nil? ? options[:marshal] : marshal)
+      end
+
+      def to_redis!(value, marshal_option)
         return value unless marshal_option
-        if [String, Integer, Float].any? { |k| marshal_option == k }
+        if [Symbol, String, Integer, Float].any? { |k| marshal_option == k }
           return value.to_s
-        elsif marshal_option == Symbol
-          return value.to_sym
         elsif marshal_option == true
           return dump(value)
         else
@@ -18,7 +19,10 @@ class Redis
       end
 
       def from_redis(value, marshal=nil)
-        marshal_option = marshal.nil? ? options[:marshal] : marshal
+        from_redis!(value, marshal.nil? ? options[:marshal] : marshal)
+      end
+
+      def from_redis!(value, marshal_option)
         return value unless marshal_option
         if marshal_option.equal? true
           case value

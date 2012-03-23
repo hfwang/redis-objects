@@ -2,20 +2,20 @@ require File.dirname(__FILE__) + '/base_object'
 require File.dirname(__FILE__) + '/hash_key'
 
 class Redis
-  attr_reader :cached
-
   #
   # Class representing a Redis hash that locally caches the entire hash's
   # contents.
   #
   class CachedHashKey < ::Redis::HashKey
+    attr_reader :cache
+
     def initialize(key, *args)
       super
       maybe_cache_values if self.options[:eager]
     end
 
     def store(field, value)
-      @cached[to_field_name(field)] = value if cached?
+      @cache[to_field_name(field)] = value if cached?
       super
     end
     alias_method :[]=, :store
@@ -23,35 +23,35 @@ class Redis
 
     def [](field)
       maybe_cache_values
-      @cached[to_field_name(field)]
+      @cache[to_field_name(field)]
     end
 
     def has_key?(field)
       maybe_cache_values
-      @cached.has_key?(to_field_name(field))
+      @cache.has_key?(to_field_name(field))
     end
     alias_method :include?, :has_key?
     alias_method :key?, :has_key?
     alias_method :member?, :has_key?
 
     def delete(field)
-      @cached.delete(to_field_name(field)) if cached?
+      @cache.delete(to_field_name(field)) if cached?
       super
     end
 
     def keys
       maybe_cache_values
-      @cached.keys
+      @cache.keys
     end
 
     def values
       maybe_cache_values
-      @cached.values
+      @cache.values
     end
 
     def each(&block)
       maybe_cache_values
-      @cached.each(&block)
+      @cache.each(&block)
     end
 
     def each_key(&block)
@@ -64,7 +64,7 @@ class Redis
 
     def size
       maybe_cache_values
-      @cached.size
+      @cache.size
     end
     alias_method :length, :size
     alias_method :count, :size
@@ -74,14 +74,14 @@ class Redis
     end
 
     def clear
-      @cached = {}
+      @cache = {}
       super
     end
 
     def bulk_set(other_hash)
       if cached?
         other_hash.each do |k, v|
-          @cached[to_field_name(k)] = v
+          @cache[to_field_name(k)] = v
         end
       end
       super
@@ -90,20 +90,20 @@ class Redis
 
     def incrby(field, val = 1)
       maybe_cache_values
-      @cached[to_field_name(field)] = super(field, val)
+      @cache[to_field_name(field)] = super(field, val)
     end
     alias_method :incr, :incrby
 
     def cached?
-      !@cached.nil?
+      !@cache.nil?
     end
 
     def maybe_cache_values
-      return @cached if cached?
+      return @cache if cached?
 
-      @cached = {}
+      @cache = {}
       self.all().each do |k, v|
-        @cached[to_field_name(k)] = v
+        @cache[to_field_name(k)] = v
       end
     end
   end

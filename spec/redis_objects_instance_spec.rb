@@ -492,7 +492,6 @@ describe Redis::HashKey do
     @hash.options[:marshal] = true
     @hash.bulk_set('abc' => [[1,2], {:t3 => 4}], 'def' => [[6,8], {:t4 => 8}])
     hsh = @hash.bulk_get('abc', 'def', 'foo')
-    puts "#{'-' * 80}"
     hsh['abc'].should == [[1,2], {:t3 => 4}]
     hsh['def'].should == [[6,8], {:t4 => 8}]
     hsh['foo'].should.be.nil
@@ -627,6 +626,22 @@ describe Redis::CachedHashKey do
     @hash.cached?.should == false
     @hash['created_at'].class.should == Time
     @hash.cached?.should == true
+  end
+
+  it "should expose access to its cache" do
+    @hash['created_at'] = Time.now
+    t = @hash['created_at']
+    @hash.cached?.should == true
+    @hash.cache.size.should == 1
+    @hash.cache['created_at'].should == t
+  end
+
+  it "should cache using redis hash keys" do
+    @hash = Redis::CachedHashKey.new('test_hash', $redis,
+                                     {:key_marshaller => Symbol})
+    @hash.maybe_cache_values
+    @hash[:foo] = 12
+    @hash.cache.keys.should == ['foo']
   end
 
   it "should not cache on write" do
