@@ -470,6 +470,27 @@ describe Redis::HashKey do
     @hash['def'].should == 2
   end
 
+  it "should handle marshaled values with typed keys" do
+    @hash.options[:marshal] = false
+    @hash.options[:marshal_keys] = {
+      :foo => Integer,
+      :bar => true,
+      :baz => String}
+    @hash.options[:key_marshaller] = Symbol
+
+    @hash[:foo] = 1
+    @hash[:foo].should == 1
+    @hash[:foo].should.be.is_a?(Fixnum)
+
+    @hash[:bar] = {:foo => :bar}
+    @hash[:bar].should == {:foo => :bar}
+    @hash[:bar].should.be.is_a?(Hash)
+
+    @hash[:baz] = "Test String"
+    @hash[:baz].should == 'Test String'
+    @hash[:baz].should.be.is_a?(String)
+  end
+
   it "should handle complex marshaled values" do
     @hash.options[:marshal] = true
     @hash['abc'].should == nil
