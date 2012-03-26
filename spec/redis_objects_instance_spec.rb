@@ -713,6 +713,24 @@ describe Redis::CachedHashKey do
     @hash[1].should == 3
     @hash[3].should == 4
   end
+
+  it "should type keys in CachedHashKey#each" do
+    @hash.options[:key_marshaller] = Integer
+    @hash.bulk_set({1 => 2, 3 => 4})
+    @hash.size.should == 2
+    @hash.each do |k, v|
+      k.class.should == Fixnum
+    end
+  end
+
+  it "should type keys in CachedHashKey#keys" do
+    @hash.options[:key_marshaller] = Integer
+    @hash.bulk_set({1 => 2, 3 => 4})
+    @hash.size.should == 2
+    @hash.keys do |k|
+      k.class.should == Fixnum
+    end
+  end
 end
 
 describe Redis::CachedSet do

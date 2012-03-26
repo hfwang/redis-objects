@@ -41,7 +41,7 @@ class Redis
 
     def keys
       maybe_cache_values
-      @cache.keys
+      @cache.keys.map { |k| from_field_name(k) }
     end
 
     def values
@@ -49,9 +49,11 @@ class Redis
       @cache.values
     end
 
-    def each(&block)
+    def each
       maybe_cache_values
-      @cache.each(&block)
+      @cache.each do |k, v|
+        yield from_field_name(k), v
+      end
     end
 
     def each_key(&block)
