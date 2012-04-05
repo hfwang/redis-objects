@@ -41,10 +41,10 @@ class Redis
             value.to_f
           elsif marshal_option === true
             restore(value) rescue value
-          elsif marshal_option.respond_to?(:load)
-            marshal_option.load(value) rescue value
-          else
+          elsif marshal_option.respond_to?(:restore)
             marshal_option.restore(value) rescue value
+          else
+            value
           end
         end
       end
