@@ -129,4 +129,17 @@ describe Redis::Model do
     player.save
     CallbackPlayer.class_eval('@@update_count').should == 2
   end
+
+  it "should properly handle dirty tracking" do
+    @player2.changed?.should == false
+
+    @player2.name = 'New name'
+    @player2.changed?.should == true
+
+    @player2.save
+    @player2.changed?.should == false
+
+    @player2.name = 'New name'
+    @player2.changed?.should == false
+  end
 end

@@ -13,9 +13,9 @@ class Redis
       klass.send :counter, :id_generator, :global => true
 
       klass.extend ActiveModel::Callbacks
-      klass.define_model_callbacks :create
-      klass.define_model_callbacks :save
-      klass.define_model_callbacks :destroy
+      klass.define_model_callbacks :create, :save, :destroy
+
+      klass.send :include, ActiveModel::Dirty
     end
 
     def initialize(new_attrs = {})
@@ -44,6 +44,9 @@ class Redis
 
         old_attributes.update(@attributes)
         @attributes.clear
+
+        @previously_changed = changes
+        @changed_attributes.clear
       end
     end
 
@@ -101,13 +104,16 @@ class Redis
         end
 
         @attributes.keys.each do |attribute_name|
+          define_attribute_methods [attribute_name]
           name = attribute_name.to_s
-          self.class_eval <<-EndMethods
+          will_change_call = (attribute_name != :id) ? "#{name}_will_change! unless value == #{name}" : ''
+          self.class_eval <<-EndMethods, __FILE__, __LINE__
             def #{name}
               @attributes[:#{name}]
             end
 
             def #{name}=(value)
+              #{will_change_call}
               @attributes[:#{name}] = value
             end
           EndMethods
