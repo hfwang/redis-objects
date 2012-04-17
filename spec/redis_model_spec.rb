@@ -40,6 +40,12 @@ describe Redis::Model do
     @player1.level.should == 1
   end
 
+  it "should initialize with given attributes" do
+    p = Player.new(:name => 'foo', :level => 1)
+    p.name.should == 'foo'
+    p.level.should == 1
+  end
+
   it "should respect persistent attributes typing" do
     p = Player.find(2)
     p.name.class.should == String
@@ -141,5 +147,15 @@ describe Redis::Model do
 
     @player2.name = 'New name'
     @player2.changed?.should == false
+  end
+
+  it "should track new_record-ness" do
+    @player2.new_record?.should == false
+    Player.find(@player2.id).new_record?.should == false
+
+    p = Player.new(:name => 'foo')
+    p.new_record?.should == true
+    p.save
+    p.new_record?.should == false
   end
 end

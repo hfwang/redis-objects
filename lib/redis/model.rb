@@ -22,25 +22,38 @@ class Redis
       klass.send :include, ActiveModel::Serialization
     end
 
-    def initialize(new_attrs = {})
-      @attributes = Hash.new { |h, k|
-        old_attributes[k] || self.class.defaults[k]
-      }
+    def initialize(new_attrs = nil)
+      @attributes = Hash.new do |h, k|
+        if k == :id && new_record?
+          nil
+        else
+          old_attributes[k] || self.class.defaults[k]
+        end
+      end
+      @new_record = true
 
+      assign_attributes(new_attrs) if new_attrs
+
+      old_attributes.maybe_cache_values if @attributes.has_key?(:id)
+    end
+
+    def assign_attributes(attributes)
       # Symbolize keys and merge in preset values
       symbolized_keys = {}
-      new_attrs.each do |k, v|
+      attributes.each do |k, v|
         symbolized_keys[k.to_sym] = v
       end
       @attributes.update(symbolized_keys)
+    end
 
-      old_attributes.maybe_cache_values if @attributes.has_key?(:id)
+    def new_record?
+      @new_record
     end
 
     def save
       run_callbacks :save do
 
-        if !@attributes.has_key?(:id)
+        if new_record?
           run_callbacks :create do
             self.id = self.class.claim_next_id
           end
@@ -52,6 +65,7 @@ class Redis
         @previously_changed = changes
         @changed_attributes.clear
       end
+      @new_record = false
     end
 
     def destroy
@@ -73,6 +87,8 @@ class Redis
 
       def find(id)
         record = self.new(:id => id)
+        record.instance_variable_set(:@new_record, false)
+
         unless record.old_attributes.has_key? :id
           raise RecordNotFound, "Couldn't find #{name} with id=#{id}"
         end
@@ -123,7 +139,6 @@ class Redis
           EndMethods
         end
         default_opts = {
-            :eager_load => true,
             :key_marshaller => Symbol,
             :marshal_keys => @attributes,
             :key => Proc.new { |r| "#{r.class.to_s}:#{r.id}" }
