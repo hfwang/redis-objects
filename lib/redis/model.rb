@@ -9,13 +9,17 @@ class Redis
 
     def self.included(klass)
       klass.send :include, Redis::Objects
-      klass.extend ClassMethods
       klass.send :counter, :id_generator, :global => true
+
+      klass.extend ClassMethods
 
       klass.extend ActiveModel::Callbacks
       klass.define_model_callbacks :create, :save, :destroy
 
+      klass.extend ActiveModel::Naming
+
       klass.send :include, ActiveModel::Dirty
+      klass.send :include, ActiveModel::Serialization
     end
 
     def initialize(new_attrs = {})
