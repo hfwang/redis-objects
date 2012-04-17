@@ -95,4 +95,38 @@ describe Redis::Model do
     players[2].id.should == 3
     SimplePlayer.last_generated_id.should == 3
   end
+
+  it "should throw RecordNotFound" do
+    lambda {
+      SimplePlayer.find(2_000_000)
+    }.should.raise(::Redis::Model::RecordNotFound)
+  end
+
+  it "should run creation and update callbacks" do
+    class CallbackPlayer
+      @@update_count = 0
+      @@create_count = 0
+
+      include Redis::Model
+      persistent_attributes(:name => String)
+
+      before_save :before_save_method
+      after_create :after_create_method
+
+      def before_save_method
+        @@update_count += 1
+      end
+
+      def after_create_method
+        @@create_count += 1
+      end
+    end
+
+    player = CallbackPlayer.create(:name => "foo")
+    CallbackPlayer.class_eval('@@update_count').should == 1
+    CallbackPlayer.class_eval('@@create_count').should == 1
+    player.name = 'bar'
+    player.save
+    CallbackPlayer.class_eval('@@update_count').should == 2
+  end
 end

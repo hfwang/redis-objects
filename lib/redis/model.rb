@@ -1,11 +1,21 @@
 require File.dirname(__FILE__) + '/base_object'
+require 'active_model'
 
 class Redis
   module Model
+    # Generic Redis::Model exception class
+    class RecordNotFound < StandardError
+    end
+
     def self.included(klass)
       klass.send :include, Redis::Objects
       klass.extend ClassMethods
       klass.send :counter, :id_generator, :global => true
+
+      klass.extend ActiveModel::Callbacks
+      klass.define_model_callbacks :create
+      klass.define_model_callbacks :save
+      klass.define_model_callbacks :destroy
     end
 
     def initialize(new_attrs = {})
@@ -24,16 +34,23 @@ class Redis
     end
 
     def save
-      if !@attributes.has_key?(:id)
-        self.id = self.class.claim_next_id
-      end
+      run_callbacks :save do
 
-      old_attributes.update(@attributes)
-      @attributes.clear
+        if !@attributes.has_key?(:id)
+          run_callbacks :create do
+            self.id = self.class.claim_next_id
+          end
+        end
+
+        old_attributes.update(@attributes)
+        @attributes.clear
+      end
     end
 
     def destroy
-      old_attributes.clear
+      run_callbacks :destroy do
+        old_attributes.clear
+      end
     end
 
     def redis_key
@@ -48,7 +65,11 @@ class Redis
       end
 
       def find(id)
-        self.new(:id => id)
+        record = self.new(:id => id)
+        unless record.old_attributes.has_key? :id
+          raise RecordNotFound, "Couldn't find #{name} with id=#{id}"
+        end
+        return record
       end
 
       def last_generated_id

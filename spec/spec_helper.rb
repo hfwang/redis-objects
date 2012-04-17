@@ -1,6 +1,7 @@
 require 'rubygems'  # poor people still on 1.8
 require 'pp'
 gem 'redis', '>= 2.1.1'
+gem 'activemodel', '~> 3.2.3'
 require 'redis'
 
 $LOAD_PATH.unshift File.expand_path(File.dirname(__FILE__) + '/../lib')
