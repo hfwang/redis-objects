@@ -7,13 +7,14 @@ begin
     gem.name = "redis-objects"
     gem.summary = %Q{Map Redis types directly to Ruby objects}
     gem.description = %Q{Map Redis types directly to Ruby objects. Works with any class or ORM.}
-    gem.email = "nate@wiger.org"
-    gem.homepage = "http://github.com/nateware/redis-objects"
-    gem.authors = ["Nate Wiger"]
+    gem.email = "hfwang@porkbuns.net"
+    gem.homepage = "http://github.com/hfwang/redis-objects"
+    gem.authors = ["Nate Wiger", "Hsiu-Fan Wang"]
     gem.add_development_dependency "bacon", ">= 0"
     gem.add_development_dependency "redis-namespace", ">= 0"
     gem.requirements << 'redis, v2.1.1 or greater'
     gem.add_dependency('redis', '>= 2.1.1')  # ALSO: update spec/spec_helper.rb
+    gem.add_dependency('activemodel', '~> 3.2.3')
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
   Jeweler::GemcutterTasks.new
