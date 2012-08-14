@@ -119,14 +119,11 @@ class Redis
         raise "Already defined the persistent attributes!" if @attributes
 
         @attributes = {:id => Integer}.update(attributes)
-        if @attributes.respond_to? :with_indifferent_access
-          @attributes = @attributes.with_indifferent_access
-        end
 
         @attributes.keys.each do |attribute_name|
           define_attribute_methods [attribute_name]
           name = attribute_name.to_s
-          will_change_call = (attribute_name != :id) ? "#{name}_will_change! unless value == #{name}" : ''
+          will_change_call = (attribute_name != :id) ? "#{name}_will_change! if !new_record? && value != #{name}" : ''
           self.class_eval <<-EndMethods, __FILE__, __LINE__
             def #{name}
               @attributes[:#{name}]
