@@ -64,9 +64,10 @@ describe Redis::Model do
     @player1.points = 2
     @player1.positions = {:foo => :bar, :baz => :buz}
     @player1.save
-    @player1 = Player.new(:id => 1)
+    @player1 = Player.find(1)
     @player1.name.should == 'Foo'
     @player1.points.should == 2
+    @player1.points.class.should == Fixnum
   end
 
   it "should support complex marshalling" do

@@ -19,7 +19,7 @@ class Redis
       super
     end
     alias_method :[]=, :store
-    alias_method :fetch, :[]=
+    alias_method :fetch, :[]
 
     def [](field)
       maybe_cache_values

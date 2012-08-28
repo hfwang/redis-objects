@@ -23,7 +23,7 @@ class Redis
     end
 
     def add(value)
-      @cache.add(value) if cached?
+      @cache << value if cached?
       super
     end
 
