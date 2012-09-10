@@ -11,10 +11,9 @@ begin
     gem.homepage = "http://github.com/hfwang/redis-objects"
     gem.authors = ["Nate Wiger", "Hsiu-Fan Wang"]
     gem.add_development_dependency "bacon", ">= 0"
-    gem.add_development_dependency "redis-namespace", ">= 0"
-    gem.requirements << 'redis, v2.1.1 or greater'
-    gem.add_dependency('redis', '>= 2.1.1')  # ALSO: update spec/spec_helper.rb
-    gem.add_dependency('activemodel', '~> 3.2.3')
+    gem.add_development_dependency "redis-namespace", ">= 1.2.0"
+    gem.requirements << 'redis, v3.0.0 or greater'
+    gem.add_dependency('redis', '>= 3.0.0')  # ALSO: update spec/spec_helper.rb
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
   Jeweler::GemcutterTasks.new

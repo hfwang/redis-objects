@@ -237,6 +237,17 @@ describe Redis::List do
       @list.get.should == ['a','c','f','j','a']
     end
 
+    it "should handle rpoplpush" do
+      list2 = Redis::List.new("spec/list2")
+      list2.clear
+
+      @list << "a" << "b"
+      result = @list.rpoplpush(list2)
+      result.should == "b"
+      @list.should == ["a"]
+      list2.should == ["b"]
+    end
+
     it "should handle lists of complex data types" do
       @list.options[:marshal] = true
       v1 = {:json => 'data'}
@@ -1000,6 +1011,7 @@ describe Redis::SortedSet do
     @set['b'] = 5
     @set['b'] = 6
     @set.score('b').should == 6
+    @set.score('f').should == nil
     @set.delete('c')
     @set.to_s.should == 'a, b'
     @set.should == ['a','b']

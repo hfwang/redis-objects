@@ -1,6 +1,5 @@
 require 'rubygems'  # poor people still on 1.8
 require 'pp'
-gem 'redis', '>= 2.1.1'
 gem 'activemodel', '~> 3.2.3'
 require 'redis'
 
@@ -30,7 +29,8 @@ at_exit do
   puts "=> Killing #{REDIS_BIN} with pid #{pid}"
   Process.kill "TERM", pid
   Process.kill "KILL", pid
-  File.unlink REDIS_PID, REDIS_DUMP rescue nil
+  File.unlink REDIS_PID
+  File.unlink REDIS_DUMP if File.exists? REDIS_DUMP
 end
 
 # Grab a global handle

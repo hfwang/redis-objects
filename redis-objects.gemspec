@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "redis-objects"
-  s.version = "0.5.2"
+  s.version = "0.5.3"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Nate Wiger", "Hsiu-Fan Wang"]
-  s.date = "2012-04-16"
+  s.date = "2012-06-13"
   s.description = "Map Redis types directly to Ruby objects. Works with any class or ORM."
   s.email = "hfwang@porkbuns.net"
   s.extra_rdoc_files = [
@@ -54,8 +54,8 @@ Gem::Specification.new do |s|
   ]
   s.homepage = "http://github.com/hfwang/redis-objects"
   s.require_paths = ["lib"]
-  s.requirements = ["redis, v2.1.1 or greater"]
-  s.rubygems_version = "1.8.21"
+  s.requirements = ["redis, v3.0.0 or greater"]
+  s.rubygems_version = "1.8.10"
   s.summary = "Map Redis types directly to Ruby objects"
 
   if s.respond_to? :specification_version then
@@ -79,4 +79,3 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<activemodel>, ["~> 3.2.3"])
   end
 end
-
