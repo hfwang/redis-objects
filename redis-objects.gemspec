@@ -65,17 +65,17 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<bacon>, [">= 0"])
       s.add_development_dependency(%q<redis-namespace>, [">= 0"])
       s.add_runtime_dependency(%q<redis>, [">= 2.1.1"])
-      s.add_runtime_dependency(%q<activemodel>, ["~> 3.2.3"])
+      s.add_runtime_dependency(%q<activemodel>, ["~> 3.2"])
     else
       s.add_dependency(%q<bacon>, [">= 0"])
       s.add_dependency(%q<redis-namespace>, [">= 0"])
       s.add_dependency(%q<redis>, [">= 2.1.1"])
-      s.add_dependency(%q<activemodel>, ["~> 3.2.3"])
+      s.add_dependency(%q<activemodel>, ["~> 3.2"])
     end
   else
     s.add_dependency(%q<bacon>, [">= 0"])
     s.add_dependency(%q<redis-namespace>, [">= 0"])
     s.add_dependency(%q<redis>, [">= 2.1.1"])
-    s.add_dependency(%q<activemodel>, ["~> 3.2.3"])
+    s.add_dependency(%q<activemodel>, ["~> 3.2"])
   end
 end
