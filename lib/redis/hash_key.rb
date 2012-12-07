@@ -61,7 +61,9 @@ class Redis
 
     # Return all the keys of the hash. Redis: HKEYS
     def keys
-      redis.hkeys(key)
+      redis.hkeys(key).map { |k|
+        from_field_name(k)
+      }
     end
 
     # Return all the values of the hash. Redis: HVALS
