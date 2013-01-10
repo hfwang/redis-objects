@@ -27,7 +27,11 @@ class Redis
         if k == :id && new_record?
           nil
         else
-          old_attributes[k] || self.class.defaults[k]
+          if new_record?
+            self.class.defaults[k]
+          else
+            old_attributes[k] || self.class.defaults[k]
+          end
         end
       end
       @new_record = true
@@ -52,7 +56,6 @@ class Redis
 
     def save
       run_callbacks :save do
-
         if new_record?
           run_callbacks :create do
             self.id = self.class.claim_next_id
@@ -124,6 +127,7 @@ class Redis
           define_attribute_methods [attribute_name]
           name = attribute_name.to_s
           will_change_call = (attribute_name != :id) ? "#{name}_will_change! if !new_record? && value != #{name}" : ''
+
           self.class_eval <<-EndMethods, __FILE__, __LINE__
             def #{name}
               @attributes[:#{name}]

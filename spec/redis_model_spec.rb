@@ -159,4 +159,13 @@ describe Redis::Model do
     p.save
     p.new_record?.should == false
   end
+
+  it "should not get stuck if an attribute is read before save" do
+    @player3 = Player.new(:name => 'bar')
+    @player3.level.should == 1
+    @player3.save
+    @player3.redis_key.should == 'Player:2'
+
+    @player3.destroy
+  end
 end
