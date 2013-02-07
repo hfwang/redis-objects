@@ -24,6 +24,10 @@ class Redis
       end
     end
     alias_method :set, :value=
+    
+    def set_ex(val, seconds)
+      redis.setex(key, seconds, to_redis(val))
+    end
 
     def value
       from_redis redis.get(key)
