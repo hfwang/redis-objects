@@ -38,6 +38,8 @@ describe Redis::Value do
     @value.get.should == 'Trevor Hoffman'
     @value.del.should == 1
     @value.should.be.nil
+    @value.value = 42
+    @value.value.should == '42'
   end
 
   it "should handle complex marshaled values" do
@@ -118,7 +120,6 @@ describe Redis::List do
   describe "as a bounded list" do
     before do
       @list = Redis::List.new('spec/bounded_list',
-                              $redis,
                               :maxlength => 10)
       1.upto(10) do |i|
         @list << i
@@ -248,6 +249,24 @@ describe Redis::List do
       list2.should == ["b"]
     end
 
+		it "should handle insert" do
+			@list << 'b' << 'd'
+			@list.insert(:before,'b','a')
+			@list.insert(:after,'b','c')
+			@list.insert("before",'a','z')
+			@list.insert("after",'d','e')
+			@list.should == ['z','a','b','c','d','e']
+		end
+
+		it "should handle insert at a specific index" do
+			@list << 'b' << 'd'
+			@list.should == ['b','d']
+			@list[0] = 'a'
+			@list.should == ['a', 'd']
+			@list[1] = 'b'
+			@list.should == ['a', 'b']
+		end
+
     it "should handle lists of complex data types" do
       @list.options[:marshal] = true
       v1 = {:json => 'data'}
@@ -255,10 +274,12 @@ describe Redis::List do
       @list << v1
       @list << v2
       @list.first.should == v1
+      @list[0] = @list[0].tap{|d| d[:json] = 'data_4'}
+      @list.first.should == {:json => 'data_4'}
       @list.last.should == v2
       @list << [1,2,3,[4,5]]
       @list.last.should == [1,2,3,[4,5]]
-      @list.shift.should == {:json => 'data'}
+      @list.shift.should == {:json => 'data_4'}
       @list.size.should == 2
       @list.delete(v2)
       @list.size.should == 1
@@ -339,7 +360,7 @@ end
 
 describe Redis::Lock do
   before do
-    $redis.flushall
+    REDIS_HANDLE.flushall
   end
 
   it "should set the value to the expiration" do
@@ -347,7 +368,7 @@ describe Redis::Lock do
     expiry = 15
     lock = Redis::Lock.new(:test_lock, :expiration => expiry)
     lock.lock do
-      expiration = $redis.get("test_lock").to_f
+      expiration = REDIS_HANDLE.get("test_lock").to_f
 
       # The expiration stored in redis should be 15 seconds from when we started
       # or a little more
@@ -355,17 +376,17 @@ describe Redis::Lock do
     end
 
     # key should have been cleaned up
-    $redis.get("test_lock").should.be.nil
+    REDIS_HANDLE.get("test_lock").should.be.nil
   end
 
   it "should set value to 1 when no expiration is set" do
     lock = Redis::Lock.new(:test_lock)
     lock.lock do
-      $redis.get('test_lock').should == '1'
+      REDIS_HANDLE.get('test_lock').should == '1'
     end
 
     # key should have been cleaned up
-    $redis.get("test_lock").should.be.nil
+    REDIS_HANDLE.get("test_lock").should.be.nil
   end
 
   it "should let lock be gettable when lock is expired" do
@@ -373,7 +394,7 @@ describe Redis::Lock do
     lock = Redis::Lock.new(:test_lock, :expiration => expiry, :timeout => 0.1)
 
     # create a fake lock in the past
-    $redis.set("test_lock", Time.now-(expiry + 60))
+    REDIS_HANDLE.set("test_lock", Time.now-(expiry + 60))
 
     gotit = false
     lock.lock do
@@ -382,7 +403,7 @@ describe Redis::Lock do
 
     # should get the lock because it has expired
     gotit.should.be.true
-    $redis.get("test_lock").should.be.nil
+    REDIS_HANDLE.get("test_lock").should.be.nil
   end
 
   it "should not let non-expired locks be gettable" do
@@ -390,7 +411,7 @@ describe Redis::Lock do
     lock = Redis::Lock.new(:test_lock, :expiration => expiry, :timeout => 0.1)
 
     # create a fake lock
-    $redis.set("test_lock", (Time.now + expiry).to_f)
+    REDIS_HANDLE.set("test_lock", (Time.now + expiry).to_f)
 
     gotit = false
     error = nil
@@ -407,7 +428,7 @@ describe Redis::Lock do
     gotit.should.not.be.true
 
     # lock value should still be set
-    $redis.get("test_lock").should.not.be.nil
+    REDIS_HANDLE.get("test_lock").should.not.be.nil
   end
 
   it "should not remove the key if lock is held past expiration" do
@@ -418,7 +439,7 @@ describe Redis::Lock do
     end
 
     # lock value should still be set since the lock was held for more than the expiry
-    $redis.get("test_lock").should.not.be.nil
+    REDIS_HANDLE.get("test_lock").should.not.be.nil
   end
 end
 
@@ -426,11 +447,7 @@ end
 describe Redis::HashKey do
   describe "With Marshal" do
     before do
-      @hash = Redis::HashKey.new('test_hash', $redis,
-                                 {:marshal_keys=>{'created_at'=>true}})
-    end
-
-    after do
+      @hash = Redis::HashKey.new('test_hash', {:marshal_keys=>{'created_at'=>true}})
       @hash.clear
     end
 
@@ -469,7 +486,7 @@ describe Redis::HashKey do
   end
 
   before do
-    @hash  = Redis::HashKey.new('test_hash')
+    @hash = Redis::HashKey.new('test_hash')
     @hash.clear
   end
 
@@ -826,18 +843,18 @@ describe Redis::Set do
     @set.should.be.empty
     @set << 'a' << 'a' << 'a'
     @set.should == ['a']
+    @set.to_s.should == 'a'
     @set.get.should == ['a']
     @set << 'b' << 'b'
-    @set.to_s.should == 'a, b'
-    @set.should == ['a','b']
-    @set.members.should == ['a','b']
-    @set.members.reverse.should == ['b','a']  # common question
-    @set.get.should == ['a','b']
+    @set.sort.should == ['a','b']
+    @set.members.sort.should == ['a','b']
+    @set.members.sort.reverse.should == ['b','a']  # common question
+    @set.get.sort.should == ['a','b']
     @set << 'c'
     @set.sort.should == ['a','b','c']
     @set.get.sort.should == ['a','b','c']
     @set.delete('c')
-    @set.should == ['a','b']
+    @set.sort.should == ['a','b']
     @set.get.sort.should == ['a','b']
     @set.length.should == 2
     @set.size.should == 2
@@ -853,10 +870,10 @@ describe Redis::Set do
     end
     i.should == @set.length
 
-    coll = @set.collect{|st| st}
+    coll = @set.sort.collect{|st| st}
     coll.should == ['a','b']
-    @set.should == ['a','b']
-    @set.get.should == ['a','b']
+    @set.sort.should == ['a','b']
+    @set.get.sort.should == ['a','b']
 
     @set << 'c'
     @set.member?('c').should.be.true
@@ -924,16 +941,31 @@ describe Redis::Set do
     @set.redis.del('spec/set2')
   end
 
-  it "should support sorting" do
-    @set_1 << 'a' << 'b' << 'c' << 'd' << 'e'
-    @set_2 << 1 << 2 << 3 << 4 << 5
-    @set_3 << 'm_1' << 'm_2'
-    @set_1.sort.should == %w(a b c d e)
-    @set_2.sort.should == %w(1 2 3 4 5)
+  it "should handle variadic sadd operations" do
+     @set.should.be.empty
+     @set << 'a'
+     @set.merge('b', 'c')
+     @set.members.sort.should == ['a', 'b', 'c']
+     @set.merge(['d','c','e'])
+     @set.members.sort.should == ['a', 'b', 'c', 'd', 'e']
+  end
 
+  it "should support sorting" do
+    @set_1 << 'c' << 'b' << 'a' << 'e' << 'd'
+    @set_1.sort.should == %w(a b c d e)
     @set_1.sort(SORT_ORDER).should == %w(e d c b a)
     @set_3.sort(SORT_BY).should == %w(m_1 m_2)
     @set_2.sort(SORT_LIMIT).should == %w(3 4)
+
+    @set_3 << 'm_4' << 'm_5' << 'm_1' << 'm_3' << 'm_2'
+    ### incorrect interpretation of what the :by parameter means
+    ### :by will look up values of keys so it would try to find a value in
+    ### redis of "m_m_1" which doesn't exist at this point, it is not a way to
+    ### alter the value to sort by but rather use a different value for this value
+    ### in the set (Kris Fox)
+    # @set_3.sort(:by => 'm_*').should == %w(m_1 m_2 m_3 m_4 m_5)
+    # below passes just fine
+    @set_3.sort.should == %w(m_1 m_2 m_3 m_4 m_5)
 
     val1 = Redis::Value.new('spec/3/sorted')
     val2 = Redis::Value.new('spec/4/sorted')
@@ -973,7 +1005,7 @@ describe Redis::SortedSet do
     @set_3.clear
   end
 
-  it "should handle sets of simple values" do
+  it "should handle sorted sets of simple values" do
     @set.should.be.empty
     @set['a'] = 11
     @set['a'] = 21
@@ -1067,7 +1099,7 @@ describe Redis::SortedSet do
     @set.size.should == 3
   end
 
-  it "should support renaming sets" do
+  it "should support renaming sorted sets" do
     @set.should.be.empty
     @set['zynga'] = 151
     @set['playfish'] = 202

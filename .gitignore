@@ -1,8 +1,10 @@
+.*.swp
 *.gemspec
 nbproject
 pkg/
 spec/*.sqlite3
-Gemfile
-Gemfile.lock
 .rvmrc
 spec/redis.pid
+.bundle/
+dump.rdb
+Gemfile.lock

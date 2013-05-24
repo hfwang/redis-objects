@@ -12,11 +12,11 @@ class Redis
     require 'redis/helpers/core_commands'
     include Redis::Helpers::CoreCommands
 
-    attr_reader :key, :options, :redis
+    attr_reader :key, :options
     def initialize(key, *args)
       super(key, *args)
       @options[:start] ||= 0
-      @redis.setnx(key, @options[:start]) unless @options[:start] == 0 || @options[:init] === false
+      redis.setnx(key, @options[:start]) unless @options[:start] == 0 || @options[:init] === false
     end
 
     # Reset the counter to its starting value.  Not atomic, so use with care.
@@ -52,7 +52,7 @@ class Redis
     # method is aliased as incr() for brevity.
     def increment(by=1, &block)
       val = redis.incrby(key, by).to_i
-      block_given? ? rewindable_block(:decrement, val, &block) : val
+      block_given? ? rewindable_block(:decrement, by, val, &block) : val
     end
     alias_method :incr, :increment
 
@@ -60,10 +60,10 @@ class Redis
     # a block, that block will be evaluated with the new value of the counter
     # as an argument. If the block returns nil or throws an exception, the
     # counter will automatically be incremented to its previous value.  This
-    # method is aliased as incr() for brevity.
+    # method is aliased as decr() for brevity.
     def decrement(by=1, &block)
       val = redis.decrby(key, by).to_i
-      block_given? ? rewindable_block(:increment, val, &block) : val
+      block_given? ? rewindable_block(:increment, by, val, &block) : val
     end
     alias_method :decr, :decrement
 
@@ -85,16 +85,16 @@ class Redis
     private
 
     # Implements atomic increment/decrement blocks
-    def rewindable_block(rewind, value, &block)
+    def rewindable_block(rewind, by, value, &block)
       raise ArgumentError, "Missing block to rewindable_block somehow" unless block_given?
       ret = nil
       begin
         ret = yield value
       rescue
-        send(rewind)
+        send(rewind, by)
         raise
       end
-      send(rewind) if ret.nil?
+      send(rewind, by) if ret.nil?
       ret
     end
   end

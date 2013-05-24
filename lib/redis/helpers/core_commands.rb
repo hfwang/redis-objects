@@ -35,7 +35,7 @@ class Redis
       end
 
       def expireat(unixtime)
-        redis.expire key, unixtime
+        redis.expireat key, unixtime
       end
 
       def persist
@@ -51,8 +51,8 @@ class Redis
       end
 
       def sort(options={})
-        options[:order] ||= "asc alpha"
-        from_redis redis.sort(key, options)
+        options[:order] = "asc alpha" if options.keys.count == 0  # compat with Ruby
+        redis.sort(key, options)
       end
     end
   end

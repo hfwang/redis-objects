@@ -1,7 +1,16 @@
 # Redis::Objects - Lightweight object layer around redis-rb
 # See README.rdoc for usage and approach.
 require 'redis'
+
 class Redis
+  autoload :Counter,   'redis/counter'
+  autoload :List,      'redis/list'
+  autoload :Lock,      'redis/lock'
+  autoload :Set,       'redis/set'
+  autoload :SortedSet, 'redis/sorted_set'
+  autoload :Value,     'redis/value'
+  autoload :HashKey,   'redis/hash_key'
+
   #
   # Redis::Objects enables high-performance atomic operations in your app
   # by leveraging the atomic features of the Redis server.  To use Redis::Objects,
@@ -38,28 +47,31 @@ class Redis
   module Objects
     dir = File.expand_path(__FILE__.sub(/\.rb$/,''))
 
-    autoload :CachedHashKeys, File.join(dir, 'cached_hash_keys')
-    autoload :CachedSets, File.join(dir, 'cached_sets')
-    autoload :Counters, File.join(dir, 'counters')
-    autoload :Lists, File.join(dir, 'lists')
-    autoload :Locks, File.join(dir, 'locks')
-    autoload :Sets, File.join(dir, 'sets')
-    autoload :SortedSets, File.join(dir, 'sorted_sets')
-    autoload :Values, File.join(dir, 'values')
-    autoload :Hashes, File.join(dir, 'hashes')
+    autoload :CachedHashKeys, 'redis/objects/cached_hash_keys'
+    autoload :CachedSets, 'redis/objects/cached_sets'
+    autoload :Counters,   'redis/objects/counters'
+    autoload :Lists,      'redis/objects/lists'
+    autoload :Locks,      'redis/objects/locks'
+    autoload :Sets,       'redis/objects/sets'
+    autoload :SortedSets, 'redis/objects/sorted_sets'
+    autoload :Values,     'redis/objects/values'
+    autoload :Hashes,     'redis/objects/hashes'
 
     class NotConnected < StandardError; end
     class NilObjectId  < StandardError; end
 
     class << self
-      def redis=(conn) @redis = conn end
+      def redis=(conn)
+        @redis = conn
+      end
       def redis
-        @redis ||= $redis || Redis.current || raise(NotConnected, "Redis::Objects.redis not set to a Redis.new connection")
+        @redis || $redis || Redis.current ||
+          raise(NotConnected, "Redis::Objects.redis not set to a Redis.new connection")
       end
 
       def included(klass)
         # Core (this file)
-        klass.instance_variable_set('@redis', @redis)
+        klass.instance_variable_set('@redis', nil)
         klass.instance_variable_set('@redis_objects', {})
         klass.send :include, InstanceMethods
         klass.extend ClassMethods
@@ -79,9 +91,17 @@ class Redis
 
     # Class methods that appear in your class when you include Redis::Objects.
     module ClassMethods
-      attr_writer   :redis
-      attr_accessor :redis_objects
-      def redis() @redis ||= Objects.redis end
+      # Enable per-class connections (eg, User and Post can use diff redis-server)
+      attr_writer :redis
+      def redis
+        @redis || Objects.redis
+      end
+
+      # Internal list of objects
+      attr_writer :redis_objects
+      def redis_objects
+        @redis_objects ||= {}
+      end
 
       # Set the Redis redis_prefix to use. Defaults to model_name
       def redis_prefix=(redis_prefix) @redis_prefix = redis_prefix end

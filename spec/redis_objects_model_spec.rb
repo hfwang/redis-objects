@@ -2,7 +2,6 @@
 require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
 
 require 'redis/objects'
-Redis::Objects.redis = $redis
 
 class Roster
   include Redis::Objects
@@ -282,7 +281,22 @@ describe Redis::Objects do
     @roster.available_slots.should == 8
 
     @roster.available_slots.should == 8
+    @roster.available_slots.decr(4) do |cnt|
+      @roster.available_slots.should == 4
+      nil  # should rewind
+    end
+    @roster.available_slots.should == 8
+
+    @roster.available_slots.should == 8
     @roster.available_slots.incr do |cnt|
+      if 1 == 2  # should rewind
+        true
+      end
+    end
+    @roster.available_slots.should == 8
+
+    @roster.available_slots.should == 8
+    @roster.available_slots.incr(5) do |cnt|
       if 1 == 2  # should rewind
         true
       end
@@ -342,7 +356,22 @@ describe Redis::Objects do
     Roster.get_counter(:available_slots, @roster.id).should == 8
 
     Roster.get_counter(:available_slots, @roster.id).should == 8
+    Roster.decrement_counter(:available_slots, @roster.id, 4) do |cnt|
+      Roster.get_counter(:available_slots, @roster.id).should == 4
+      nil  # should rewind
+    end
+    Roster.get_counter(:available_slots, @roster.id).should == 8
+
+    Roster.get_counter(:available_slots, @roster.id).should == 8
     Roster.increment_counter(:available_slots, @roster.id) do |cnt|
+      if 1 == 2  # should rewind
+        true
+      end
+    end
+    Roster.get_counter(:available_slots, @roster.id).should == 8
+
+    Roster.get_counter(:available_slots, @roster.id).should == 8
+    Roster.increment_counter(:available_slots, @roster.id, 4) do |cnt|
       if 1 == 2  # should rewind
         true
       end
@@ -669,15 +698,14 @@ describe Redis::Objects do
     Roster.all_players_online.should == ['a']
     Roster.all_players_online.get.should == ['a']
     Roster.all_players_online << 'b' << 'b'
-    Roster.all_players_online.to_s.should == 'a, b'
-    Roster.all_players_online.should == ['a','b']
-    Roster.all_players_online.members.should == ['a','b']
-    Roster.all_players_online.get.should == ['a','b']
+    Roster.all_players_online.sort.should == ['a','b']
+    Roster.all_players_online.members.sort.should == ['a','b']
+    Roster.all_players_online.get.sort.should == ['a','b']
     Roster.all_players_online << 'c'
     Roster.all_players_online.sort.should == ['a','b','c']
     Roster.all_players_online.get.sort.should == ['a','b','c']
     Roster.all_players_online.delete('c')
-    Roster.all_players_online.should == ['a','b']
+    Roster.all_players_online.sort.should == ['a','b']
     Roster.all_players_online.get.sort.should == ['a','b']
     Roster.all_players_online.length.should == 2
     Roster.all_players_online.size.should == 2
@@ -689,9 +717,9 @@ describe Redis::Objects do
     i.should == Roster.all_players_online.length
 
     coll = Roster.all_players_online.collect{|st| st}
-    coll.should == ['a','b']
-    Roster.all_players_online.should == ['a','b']
-    Roster.all_players_online.get.should == ['a','b']
+    coll.sort.should == ['a','b']
+    Roster.all_players_online.sort.should == ['a','b']
+    Roster.all_players_online.get.sort.should == ['a','b']
 
     Roster.all_players_online << 'c'
     Roster.all_players_online.member?('c').should.be.true
@@ -759,13 +787,14 @@ describe Redis::Objects do
   end
 
   it "should handle sets of complex data types" do
-    @roster.outfielders << {:a => 1} << {:b => 2}
+    @roster.outfielders << {:a => 1}
+    @roster.outfielders.members.should == [{:a => 1}]
+    @roster.outfielders << {:b => 2}
     @roster.outfielders.member?({:b => 2})
-    @roster.outfielders.members.should == [{:b => 2}, {:a => 1}]
     @roster_1.outfielders << {:a => 1} << {:b => 2}
     @roster_2.outfielders << {:b => 2} << {:c => 3}
     (@roster_1.outfielders & @roster_2.outfielders).should == [{:b => 2}]
-    (@roster_1.outfielders | @roster_2.outfielders).should == [{:b=>2}, {:c=>3}, {:a=>1}]
+    #(@roster_1.outfielders | @roster_2.outfielders).members.should ==
   end
 
   it "should provide a lock method that accepts a block" do
@@ -842,5 +871,56 @@ describe Redis::Objects do
     @custom_method_roster.basic.reset.should.be.true
     @custom_method_roster.basic.should == 0
     @custom_method_roster.basic.should.be.kind_of(Redis::Counter)
+  end
+
+  it "should pick up class methods from superclass automatically" do
+    CounterRoster = Class.new(Roster)
+    CounterRoster.counter :extended_counter
+    extended_roster = CounterRoster.new
+    extended_roster.basic.should.be.kind_of(Redis::Counter)
+    extended_roster.extended_counter.should.be.kind_of(Redis::Counter)
+    @roster.respond_to?(:extended_counter).should == false
+
+    HashKeyRoster = Class.new(Roster)
+    HashKeyRoster.hash_key :extended_hash_key
+    extended_roster = HashKeyRoster.new
+    extended_roster.contact_information.should.be.kind_of(Redis::HashKey)
+    extended_roster.extended_hash_key.should.be.kind_of(Redis::HashKey)
+    @roster.respond_to?(:extended_hash_key).should == false
+
+    LockRoster = Class.new(Roster)
+    LockRoster.lock :extended
+    extended_roster = LockRoster.new
+    extended_roster.resort_lock.should.be.kind_of(Redis::Lock)
+    extended_roster.extended_lock.should.be.kind_of(Redis::Lock)
+    @roster.respond_to?(:extended_lock).should == false
+
+    ValueRoster = Class.new(Roster)
+    ValueRoster.value :extended_value
+    extended_roster = ValueRoster.new
+    extended_roster.starting_pitcher.should.be.kind_of(Redis::Value)
+    extended_roster.extended_value.should.be.kind_of(Redis::Value)
+    @roster.respond_to?(:extended_value).should == false
+
+    ListRoster = Class.new(Roster)
+    ListRoster.list :extended_list
+    extended_roster = ListRoster.new
+    extended_roster.player_stats.should.be.kind_of(Redis::List)
+    extended_roster.extended_list.should.be.kind_of(Redis::List)
+    @roster.respond_to?(:extended_list).should == false
+
+    SetRoster = Class.new(Roster)
+    SetRoster.set :extended_set
+    extended_roster = SetRoster.new
+    extended_roster.outfielders.should.be.kind_of(Redis::Set)
+    extended_roster.extended_set.should.be.kind_of(Redis::Set)
+    @roster.respond_to?(:extended_set).should == false
+
+    SortedSetRoster = Class.new(Roster)
+    SortedSetRoster.sorted_set :extended_sorted_set
+    extended_roster = SortedSetRoster.new
+    extended_roster.rank.should.be.kind_of(Redis::SortedSet)
+    extended_roster.extended_sorted_set.should.be.kind_of(Redis::SortedSet)
+    @roster.respond_to?(:extended_sorted_set).should == false
   end
 end

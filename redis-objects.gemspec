@@ -5,22 +5,25 @@
 
 Gem::Specification.new do |s|
   s.name = "redis-objects"
-  s.version = "0.5.3"
+  s.version = "0.7.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Nate Wiger", "Hsiu-Fan Wang"]
+  s.date = "2013-02-27"
   s.date = "2012-06-13"
-  s.description = "Map Redis types directly to Ruby objects. Works with any class or ORM."
+  s.description = "Map Redis types directly to Ruby objects, now with fancy marshalling. Works with any class or ORM."
   s.email = "hfwang@porkbuns.net"
   s.extra_rdoc_files = [
-    "README.rdoc"
+    "README.md"
   ]
   s.files = [
     "ATOMICITY.rdoc",
     "CHANGELOG.rdoc",
-    "README.rdoc",
+    "Gemfile",
+    "README.md",
     "Rakefile",
     "VERSION",
+    "lib/redis-objects.rb",
     "lib/redis/base_object.rb",
     "lib/redis/cached_hash_key.rb",
     "lib/redis/cached_set.rb",
@@ -46,36 +49,37 @@ Gem::Specification.new do |s|
     "lib/redis/value.rb",
     "redis-objects.gemspec",
     "spec/redis_model_spec.rb",
+    "spec/redis_autoload_objects_spec.rb",
     "spec/redis_namespace_compat_spec.rb",
     "spec/redis_objects_active_record_spec.rb",
+    "spec/redis_objects_conn_spec.rb",
     "spec/redis_objects_instance_spec.rb",
     "spec/redis_objects_model_spec.rb",
     "spec/spec_helper.rb"
   ]
   s.homepage = "http://github.com/hfwang/redis-objects"
   s.require_paths = ["lib"]
-  s.requirements = ["redis, v3.0.0 or greater"]
-  s.rubygems_version = "1.8.10"
+  s.rubygems_version = "1.8.24"
   s.summary = "Map Redis types directly to Ruby objects"
 
   if s.respond_to? :specification_version then
     s.specification_version = 3
 
     if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
+      s.add_runtime_dependency(%q<redis>, [">= 3.0.2"])
       s.add_development_dependency(%q<bacon>, [">= 0"])
-      s.add_development_dependency(%q<redis-namespace>, [">= 0"])
-      s.add_runtime_dependency(%q<redis>, [">= 2.1.1"])
+      s.add_development_dependency(%q<redis-namespace>, [">= 1.2.0"])
       s.add_runtime_dependency(%q<activemodel>, ["~> 3.2"])
     else
+      s.add_dependency(%q<redis>, [">= 3.0.2"])
       s.add_dependency(%q<bacon>, [">= 0"])
-      s.add_dependency(%q<redis-namespace>, [">= 0"])
-      s.add_dependency(%q<redis>, [">= 2.1.1"])
+      s.add_dependency(%q<redis-namespace>, [">= 1.2.0"])
       s.add_dependency(%q<activemodel>, ["~> 3.2"])
     end
   else
+    s.add_dependency(%q<redis>, [">= 3.0.2"])
     s.add_dependency(%q<bacon>, [">= 0"])
-    s.add_dependency(%q<redis-namespace>, [">= 0"])
-    s.add_dependency(%q<redis>, [">= 2.1.1"])
+    s.add_dependency(%q<redis-namespace>, [">= 1.2.0"])
     s.add_dependency(%q<activemodel>, ["~> 3.2"])
   end
 end

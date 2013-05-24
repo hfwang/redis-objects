@@ -13,12 +13,17 @@ class Redis
     require 'redis/helpers/serialize'
     include Redis::Helpers::Serialize
 
-    attr_reader :key, :options, :redis
+    attr_reader :key, :options
 
     # Works like push.  Can chain together: list << 'a' << 'b'
     def <<(value)
       push(value)
       self  # for << 'a' << 'b'
+    end
+	
+    # Add a member before or after pivot in the list. Redis: LINSERT
+    def insert(where,pivot,value)
+      redis.linsert(key,where,to_redis(pivot),to_redis(value))
     end
 
     # Add a member to the end of the list. Redis: RPUSH
@@ -83,7 +88,7 @@ class Redis
 
     # Same functionality as Ruby arrays.
     def []=(index, value)
-      redis.lset(key, index, value)
+      redis.lset(key, index, to_redis(value))
     end
 
     # Delete the element(s) from the list that match name. If count is specified,

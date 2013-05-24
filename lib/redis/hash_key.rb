@@ -12,8 +12,7 @@ class Redis
     require 'redis/helpers/serialize'
     include Redis::Helpers::Serialize
 
-    attr_reader :key, :options, :redis
-
+    attr_reader :key, :options
     def initialize(key, *args)
       super
       marshal_keys = Hash.new { |hash, key| @options[:marshal] }
@@ -140,6 +139,13 @@ class Redis
         hsh[k] = from_redis(res.shift, options[:marshal_keys][k])
       end
       hsh
+    end
+
+    # Get values in bulk, takes an array of keys as arguments.
+    # Values are returned in a collection in the same order than their keys in *keys Redis: HMGET
+    def bulk_values(*keys)
+      res = redis.hmget(key, *keys.flatten)
+      keys.inject([]){|collection, k| collection << from_redis(res.shift)}
     end
 
     # Increment value by integer at field. Redis: HINCRBY
