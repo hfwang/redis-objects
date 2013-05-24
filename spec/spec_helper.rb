@@ -29,7 +29,7 @@ describe 'redis-server' do
       system "(echo port #{REDIS_PORT}; echo logfile /dev/null; echo daemonize yes; echo pidfile #{REDIS_PID}; echo dbfilename #{REDIS_DUMP}) | #{REDIS_BIN} -"
     end
     fork_pid.should > 0
-    sleep 2 
+    sleep 2
   end
 end
 
@@ -62,7 +62,8 @@ SORT_BY    = {:by => 'm_*'}
 SORT_GET   = {:get => 'spec/*/sorted'}.merge!(SORT_LIMIT)
 SORT_STORE = {:store => "spec/aftersort"}.merge!(SORT_GET)
 
-def count_redis_calls(redis=$redis)
+def count_redis_calls(redis=nil)
+  redis = Redis.current
   old_client = redis.client
   client = redis.client.dup
   class << client
@@ -75,9 +76,9 @@ def count_redis_calls(redis=$redis)
     end
 
     alias_method :call_without_count, :call
-    def call(*args)
+    def call(*args, &block)
       @call_count = call_count + 1
-      call_without_count(*args)
+      call_without_count(*args, &block)
     end
   end
   redis.instance_variable_set :@client, client

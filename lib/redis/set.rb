@@ -170,7 +170,7 @@ class Redis
     end
 
     def ==(x)
-      members == x
+      ::Set.new(members) == ::Set.new(x)
     end
 
     def to_s

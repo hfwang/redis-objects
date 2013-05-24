@@ -3,8 +3,6 @@ require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
 require 'redis/objects'
 require 'redis/model'
 
-Redis::Objects.redis = $redis
-
 class Player
   include Redis::Model
   persistent_attributes(:name => String,
@@ -86,9 +84,9 @@ describe Redis::Model do
   end
 
   it "should delete the key on destroy" do
-    $redis.exists(@player2.redis_key).should == true
+    Redis.current.exists(@player2.redis_key).should == true
     @player2.destroy
-    $redis.exists(@player2.redis_key).should == false
+    Redis.current.exists(@player2.redis_key).should == false
   end
 
   it "should autogenerate IDs" do

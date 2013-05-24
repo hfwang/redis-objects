@@ -66,7 +66,7 @@ describe Redis::Value do
   it "should handle custom marshalled values" do
     @value.options[:marshal] = CustomMarshal
     @value.value = "Hello"
-    $redis.get(@value.key).should == "Hello_marshalled"
+    Redis.current.get(@value.key).should == "Hello_marshalled"
     @value.should == "Hello"
   end
 
@@ -457,7 +457,7 @@ describe Redis::HashKey do
     end
 
     it "should coerce keys to different types" do
-      @hash = Redis::HashKey.new('test_hash', $redis,
+      @hash = Redis::HashKey.new('test_hash', Redis.current,
                                  {:marshal_keys => {:created_at => true},
                                   :key_marshaller => Symbol})
       @hash[:created_at] = Time.now
@@ -549,7 +549,7 @@ describe Redis::HashKey do
     hsh['abc'].should == [[1,2], {:t3 => 4}]
     hsh['def'].should == [[6,8], {:t4 => 8}]
 
-    @hash.values.should == [[[1,2], {:t3 => 4}], [[6,8], {:t4 => 8}]]
+    @hash.values.sort.should == [[[1,2], {:t3 => 4}], [[6,8], {:t4 => 8}]].sort
 
     @hash.delete('def').should == 1
     @hash.delete('abc').should == 1
@@ -655,16 +655,17 @@ end
 
 describe Redis::CachedHashKey do
   before do
-    @hash = Redis::CachedHashKey.new('test_hash', $redis,
+    @hash = Redis::CachedHashKey.new('test_hash', Redis.current,
                                {:marshal_keys=>{'created_at'=>true}})
   end
+
   after do
     @hash.clear
   end
 
   it "should not eagerly load" do
     count_redis_calls {
-      @hash = Redis::CachedHashKey.new('test_hash', $redis,
+      @hash = Redis::CachedHashKey.new('test_hash', Redis.current,
           {:marshal_keys=>{'created_at'=>true}})
       @hash.cached?.should == false
     }.should == 0
@@ -686,11 +687,11 @@ describe Redis::CachedHashKey do
   end
 
   it "should cache using redis hash keys" do
-    @hash = Redis::CachedHashKey.new('test_hash', $redis,
+    hash2 = Redis::CachedHashKey.new('test_hash', Redis.current,
                                      {:key_marshaller => Symbol})
-    @hash.maybe_cache_values
-    @hash[:foo] = 12
-    @hash.cache.keys.should == ['foo']
+    hash2.maybe_cache_values
+    hash2[:foo] = 12
+    hash2.cache.keys.should == ['foo']
   end
 
   it "should not cache on write" do
@@ -763,7 +764,7 @@ end
 
 describe Redis::CachedSet do
   before do
-    @set = Redis::CachedSet.new('test_set', $redis,
+    @set = Redis::CachedSet.new('test_set', Redis.current,
                                {:marshal => true})
   end
   after do
@@ -772,7 +773,7 @@ describe Redis::CachedSet do
 
   it "should not eagerly load" do
     count_redis_calls {
-      @set = Redis::CachedSet.new('test_set', $redis,
+      @set = Redis::CachedSet.new('test_set', Redis.current,
           {:marshal => true})
       @set.cached?.should == false
     }.should == 0
@@ -954,18 +955,20 @@ describe Redis::Set do
     @set_1 << 'c' << 'b' << 'a' << 'e' << 'd'
     @set_1.sort.should == %w(a b c d e)
     @set_1.sort(SORT_ORDER).should == %w(e d c b a)
-    @set_3.sort(SORT_BY).should == %w(m_1 m_2)
+
+    @set_2 << 2 << 4 << 3 << 1 << 5
+    @set_2.sort.should == %w(1 2 3 4 5)
     @set_2.sort(SORT_LIMIT).should == %w(3 4)
 
     @set_3 << 'm_4' << 'm_5' << 'm_1' << 'm_3' << 'm_2'
-    ### incorrect interpretation of what the :by parameter means
-    ### :by will look up values of keys so it would try to find a value in
-    ### redis of "m_m_1" which doesn't exist at this point, it is not a way to
-    ### alter the value to sort by but rather use a different value for this value
-    ### in the set (Kris Fox)
+		### incorrect interpretation of what the :by parameter means
+		### :by will look up values of keys so it would try to find a value in
+		### redis of "m_m_1" which doesn't exist at this point, it is not a way to
+		### alter the value to sort by but rather use a different value for this value
+		### in the set (Kris Fox)
     # @set_3.sort(:by => 'm_*').should == %w(m_1 m_2 m_3 m_4 m_5)
-    # below passes just fine
-    @set_3.sort.should == %w(m_1 m_2 m_3 m_4 m_5)
+		# below passes just fine
+		@set_3.sort.should == %w(m_1 m_2 m_3 m_4 m_5)
 
     val1 = Redis::Value.new('spec/3/sorted')
     val2 = Redis::Value.new('spec/4/sorted')
@@ -1008,6 +1011,7 @@ describe Redis::SortedSet do
   it "should handle sorted sets of simple values" do
     @set.should.be.empty
     @set['a'] = 11
+    @set['a'].should == 11
     @set['a'] = 21
     @set.add('a', 5)
     @set.score('a').should == 5
@@ -1025,7 +1029,7 @@ describe Redis::SortedSet do
     @set.slice(0, 2).should == a.slice(0, 2)
     @set.range(0, 2).should == a[0..2]
     @set[0, 0].should == []
-    @set.range(0,1,:withscores => true).should == [['a',3],['c',4]]
+    @set.range(0, 1, :withscores => true).should == [['a', 3],['c', 4]]
     @set.range(0,-1).should == a[0..-1]
     @set.revrange(0,-1).should == a[0..-1].reverse
     @set[0..1].should == a[0..1]

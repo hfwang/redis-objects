@@ -549,7 +549,7 @@ describe Redis::Objects do
   it "should handle cached sets of values" do
     @roster.cached_outfielders.should.be.empty
     @roster.cached_outfielders << 'a' << 'a' << 'a'
-    @roster.cached_outfielders.get.should == ::Set.new('a')
+    @roster.cached_outfielders.get.should == ::Set.new(['a'])
     @roster.cached_outfielders << 'b' << 'b'
     @roster.cached_outfielders.include?('b').should == true
     @roster.cached_outfielders.include?('a').should == true
@@ -561,10 +561,9 @@ describe Redis::Objects do
     @roster.simple_outfielders.should == ['a']
     @roster.simple_outfielders.get.should == ['a']
     @roster.simple_outfielders << 'b' << 'b'
-    @roster.simple_outfielders.to_s.should == 'a, b'
     @roster.simple_outfielders.should == ['a','b']
-    @roster.simple_outfielders.members.should == ['a','b']
-    @roster.simple_outfielders.get.should == ['a','b']
+    @roster.simple_outfielders.members.sort.should == ['a','b']
+    @roster.simple_outfielders.get.sort.should == ['a','b']
     @roster.simple_outfielders << 'c'
     @roster.simple_outfielders.sort.should == ['a','b','c']
     @roster.simple_outfielders.get.sort.should == ['a','b','c']
@@ -580,8 +579,8 @@ describe Redis::Objects do
     end
     i.should == @roster.simple_outfielders.length
 
-    coll = @roster.simple_outfielders.collect{|st| st}
-    coll.should == ['a','b']
+    coll = @roster.simple_outfielders.collect{ |st| st}
+    coll.sort.should == ['a','b']
     @roster.simple_outfielders.should == ['a','b']
     @roster.simple_outfielders.get.should == ['a','b']
 
