@@ -4,15 +4,14 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = "redis-objects"
+  s.name = %q{redis-objects}
   s.version = "0.7.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Nate Wiger", "Hsiu-Fan Wang"]
-  s.date = "2013-02-27"
-  s.date = "2012-06-13"
-  s.description = "Map Redis types directly to Ruby objects, now with fancy marshalling. Works with any class or ORM."
-  s.email = "hfwang@porkbuns.net"
+  s.date = %q{2013-05-23}
+  s.description = %q{Map Redis types directly to Ruby objects. Works with any class or ORM.}
+  s.email = %q{hfwang@porkbuns.net}
   s.extra_rdoc_files = [
     "README.md"
   ]
@@ -48,8 +47,8 @@ Gem::Specification.new do |s|
     "lib/redis/sorted_set.rb",
     "lib/redis/value.rb",
     "redis-objects.gemspec",
-    "spec/redis_model_spec.rb",
     "spec/redis_autoload_objects_spec.rb",
+    "spec/redis_model_spec.rb",
     "spec/redis_namespace_compat_spec.rb",
     "spec/redis_objects_active_record_spec.rb",
     "spec/redis_objects_conn_spec.rb",
@@ -57,29 +56,43 @@ Gem::Specification.new do |s|
     "spec/redis_objects_model_spec.rb",
     "spec/spec_helper.rb"
   ]
-  s.homepage = "http://github.com/hfwang/redis-objects"
+  s.homepage = %q{http://github.com/hfwang/redis-objects}
   s.require_paths = ["lib"]
-  s.rubygems_version = "1.8.24"
-  s.summary = "Map Redis types directly to Ruby objects"
+  s.rubygems_version = %q{1.3.6}
+  s.summary = %q{Map Redis types directly to Ruby objects}
 
   if s.respond_to? :specification_version then
+    current_version = Gem::Specification::CURRENT_SPECIFICATION_VERSION
     s.specification_version = 3
 
-    if Gem::Version.new(Gem::VERSION) >= Gem::Version.new('1.2.0') then
+    if Gem::Version.new(Gem::RubyGemsVersion) >= Gem::Version.new('1.2.0') then
       s.add_runtime_dependency(%q<redis>, [">= 3.0.2"])
+      s.add_development_dependency(%q<redis-namespace>, [">= 0"])
+      s.add_development_dependency(%q<bacon>, [">= 0"])
+      s.add_development_dependency(%q<jeweler>, [">= 0"])
+      s.add_development_dependency(%q<activerecord>, [">= 0"])
+      s.add_development_dependency(%q<pry>, [">= 0"])
       s.add_development_dependency(%q<bacon>, [">= 0"])
       s.add_development_dependency(%q<redis-namespace>, [">= 1.2.0"])
-      s.add_runtime_dependency(%q<activemodel>, [">= 3.2"])
     else
       s.add_dependency(%q<redis>, [">= 3.0.2"])
+      s.add_dependency(%q<redis-namespace>, [">= 0"])
+      s.add_dependency(%q<bacon>, [">= 0"])
+      s.add_dependency(%q<jeweler>, [">= 0"])
+      s.add_dependency(%q<activerecord>, [">= 0"])
+      s.add_dependency(%q<pry>, [">= 0"])
       s.add_dependency(%q<bacon>, [">= 0"])
       s.add_dependency(%q<redis-namespace>, [">= 1.2.0"])
-      s.add_dependency(%q<activemodel>, [">= 3.2"])
     end
   else
     s.add_dependency(%q<redis>, [">= 3.0.2"])
+    s.add_dependency(%q<redis-namespace>, [">= 0"])
+    s.add_dependency(%q<bacon>, [">= 0"])
+    s.add_dependency(%q<jeweler>, [">= 0"])
+    s.add_dependency(%q<activerecord>, [">= 0"])
+    s.add_dependency(%q<pry>, [">= 0"])
     s.add_dependency(%q<bacon>, [">= 0"])
     s.add_dependency(%q<redis-namespace>, [">= 1.2.0"])
-    s.add_dependency(%q<activemodel>, [">= 3.2"])
   end
 end
+
