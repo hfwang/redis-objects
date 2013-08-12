@@ -581,8 +581,8 @@ describe Redis::Objects do
 
     coll = @roster.simple_outfielders.collect{ |st| st}
     coll.sort.should == ['a','b']
-    @roster.simple_outfielders.should == ['a','b']
-    @roster.simple_outfielders.get.should == ['a','b']
+    Set.new(@roster.simple_outfielders).should == Set.new(['a','b'])
+    Set.new(@roster.simple_outfielders.get).should == Set.new(['a','b'])
 
     @roster.simple_outfielders << 'c'
     @roster.simple_outfielders.member?('c').should.be.true
