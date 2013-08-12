@@ -13,6 +13,7 @@ class Redis
     include Redis::Helpers::Serialize
 
     attr_reader :key, :options
+
     def initialize(key, *args)
       super
       marshal_keys = Hash.new { |hash, key| @options[:marshal] }
