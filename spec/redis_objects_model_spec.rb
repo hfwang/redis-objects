@@ -28,7 +28,10 @@ class Roster
   list :all_player_stats, :key => 'players:all_stats', :global => true
   set :total_wins, :key => 'players:#{id}:all_stats'
   value :my_rank, :key => 'players:my_rank:#{username}'
-  value :weird_key, :key => 'players:weird_key:#{raise}', :global => true
+
+  # now support class interpolation as well. not sure why not previously
+  def self.jimmyhat; 350; end
+  value :weird_key, :key => 'players:weird_key:#{jimmyhat}', :global => true
 
   #callable as key
   counter :daily, :global => true, :key => Proc.new { |roster| "#{roster.name}:#{Time.now.strftime('%Y-%m-%dT%H')}:daily" }
@@ -63,6 +66,17 @@ class CustomMethodRoster < MethodRoster
   include Redis::Objects
 
   attr_accessor :counter
+  counter :basic
+end
+
+class UidRoster < Roster
+  attr_accessor :uid
+  def initialize(uid=123) @uid = uid end
+end
+
+class CustomIdFieldRoster < UidRoster
+  redis_id_field :uid
+  include Redis::Objects
   counter :basic
 end
 
@@ -135,7 +149,7 @@ describe Redis::Objects do
     @roster.my_rank = 'a'
     @roster.redis.get('players:my_rank:user1').should == 'a'
     Roster.weird_key = 'tuka'
-    Roster.redis.get('players:weird_key:#{raise}').should == 'tuka'
+    Roster.redis.get("players:weird_key:#{Roster.jimmyhat}").should == 'tuka'
 
     k = "Roster:#{Time.now.strftime('%Y-%m-%dT%H')}:daily"
     @roster.daily.incr
@@ -520,30 +534,33 @@ describe Redis::Objects do
     @roster.player_stats.size.should == 4
     @roster.player_stats.should == ['a','c','f','j']
     @roster.player_stats.get.should == ['a','c','f','j']
+    @roster.player_stats.push *['h','i']
+    @roster.player_stats.should == ['a','c','f','j','h','i']
+    @roster.player_stats.get.should == ['a','c','f','j','h','i']
 
     i = -1
     @roster.player_stats.each do |st|
       st.should == @roster.player_stats[i += 1]
     end
-    @roster.player_stats.should == ['a','c','f','j']
-    @roster.player_stats.get.should == ['a','c','f','j']
+    @roster.player_stats.should == ['a','c','f','j','h','i']
+    @roster.player_stats.get.should == ['a','c','f','j','h','i']
 
     @roster.player_stats.each_with_index do |st,i|
       st.should == @roster.player_stats[i]
     end
-    @roster.player_stats.should == ['a','c','f','j']
-    @roster.player_stats.get.should == ['a','c','f','j']
+    @roster.player_stats.should == ['a','c','f','j','h','i']
+    @roster.player_stats.get.should == ['a','c','f','j','h','i']
 
     coll = @roster.player_stats.collect{|st| st}
-    coll.should == ['a','c','f','j']
-    @roster.player_stats.should == ['a','c','f','j']
-    @roster.player_stats.get.should == ['a','c','f','j']
+    coll.should == ['a','c','f','j','h','i']
+    @roster.player_stats.should == ['a','c','f','j','h','i']
+    @roster.player_stats.get.should == ['a','c','f','j','h','i']
 
     @roster.player_stats << 'a'
     coll = @roster.player_stats.select{|st| st == 'a'}
     coll.should == ['a','a']
-    @roster.player_stats.should == ['a','c','f','j','a']
-    @roster.player_stats.get.should == ['a','c','f','j','a']
+    @roster.player_stats.should == ['a','c','f','j','h','i','a']
+    @roster.player_stats.get.should == ['a','c','f','j','h','i','a']
   end
 
   it "should handle cached sets of values" do
@@ -870,6 +887,15 @@ describe Redis::Objects do
     @custom_method_roster.basic.reset.should.be.true
     @custom_method_roster.basic.should == 0
     @custom_method_roster.basic.should.be.kind_of(Redis::Counter)
+  end
+
+  it "should persist object with custom id field name" do
+    @custom_id_field_roster = CustomIdFieldRoster.new()
+    @custom_id_field_roster.uid.should == 123 # sanity
+    @custom_id_field_roster.increment(:basic).should == 1
+    @custom_id_field_roster.basic.increment.should == 2
+    @custom_id_field_roster.basic.reset
+    @custom_id_field_roster.basic.should == 0
   end
 
   it "should pick up class methods from superclass automatically" do

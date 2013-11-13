@@ -134,19 +134,21 @@ class Redis
           redis.zrangebyscore(key, min, max, args), args)
     end
 
-    # Return all the elements in the sorted set at key with a score between min and max
-    # (including elements with score equal to min or max).  Options:
+    # Returns all the elements in the sorted set at key with a score between max and min
+    # (including elements with score equal to max or min). In contrary to the default ordering of sorted sets,
+    # for this command the elements are considered to be ordered from high to low scores.
+    # Options:
     #     :count, :offset - passed to LIMIT
     #     :withscores     - if true, scores are returned as well
     # Redis: ZREVRANGEBYSCORE
-    def revrangebyscore(min, max, options={})
+    def revrangebyscore(max, min, options={})
       args = {}
       args[:limit] = [options[:offset] || 0, options[:limit] || options[:count]] if
                 options[:offset] || options[:limit] || options[:count]
       args[:with_scores] = true if options[:withscores] || options[:with_scores]
 
       from_redis_with_scores(
-          redis.zrevrangebyscore(key, min, max, args), args)
+          redis.zrevrangebyscore(key, max, min, args), args)
     end
 
     # Remove all elements in the sorted set at key with rank between start and end. Start and end are
@@ -318,7 +320,7 @@ class Redis
     def key_from_object(set)
       set.is_a?(Redis::SortedSet) ? set.key : set
     end
-    
+
     def keys_from_objects(sets)
       raise ArgumentError, "Must pass in one or more set names" if sets.empty?
       sets.collect{|set| set.is_a?(Redis::SortedSet) ? set.key : set}

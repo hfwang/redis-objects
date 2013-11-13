@@ -195,6 +195,9 @@ describe Redis::List do
       @list.get.should == ['a','c','f']
       @list << 'j'
       @list.should == ['a','c','f','j']
+      @list.push 'h'
+      @list.push 'i', 'j'
+      @list.should == ['a','c','f','j','h','i','j']
       # Test against similar Ruby functionality
       a = @list.values
       @list[0..2].should == a[0..2]
@@ -208,34 +211,35 @@ describe Redis::List do
       @list.slice(1, 3).should == a.slice(1, 3)
       @list[0, 0].should == []
       @list[0, -1].should == a[0, -1]
-      @list.length.should == 4
-      @list.size.should == 4
+      @list.length.should == 7
       @list.should == a
       @list.get.should == a
+      @list.pop # lose 'j'
+      @list.size.should == 6
 
       i = -1
       @list.each do |st|
         st.should == @list[i += 1]
       end
-      @list.should == ['a','c','f','j']
-      @list.get.should == ['a','c','f','j']
+      @list.should == ['a','c','f','j','h','i']
+      @list.get.should == ['a','c','f','j','h','i']
 
       @list.each_with_index do |st,i|
         st.should == @list[i]
       end
-      @list.should == ['a','c','f','j']
-      @list.get.should == ['a','c','f','j']
+      @list.should == ['a','c','f','j','h','i']
+      @list.get.should == ['a','c','f','j','h','i']
 
       coll = @list.collect{|st| st}
-      coll.should == ['a','c','f','j']
-      @list.should == ['a','c','f','j']
-      @list.get.should == ['a','c','f','j']
+      coll.should == ['a','c','f','j','h','i']
+      @list.should == ['a','c','f','j','h','i']
+      @list.get.should == ['a','c','f','j','h','i']
 
       @list << 'a'
       coll = @list.select{|st| st == 'a'}
       coll.should == ['a','a']
-      @list.should == ['a','c','f','j','a']
-      @list.get.should == ['a','c','f','j','a']
+      @list.should == ['a','c','f','j','h','i','a']
+      @list.get.should == ['a','c','f','j','h','i','a']
     end
 
     it "should handle rpoplpush" do
@@ -271,18 +275,26 @@ describe Redis::List do
       @list.options[:marshal] = true
       v1 = {:json => 'data'}
       v2 = {:json2 => 'data2'}
+      v3 = [1,2,3]
       @list << v1
       @list << v2
       @list.first.should == v1
       @list[0] = @list[0].tap{|d| d[:json] = 'data_4'}
       @list.first.should == {:json => 'data_4'}
       @list.last.should == v2
-      @list << [1,2,3,[4,5]]
-      @list.last.should == [1,2,3,[4,5]]
+      @list << [1,2,3,[4,5],6]
+      @list.last.should == [1,2,3,[4,5],6]
       @list.shift.should == {:json => 'data_4'}
       @list.size.should == 2
       @list.delete(v2)
       @list.size.should == 1
+      @list.push v1, v2
+      @list[1].should == v1
+      @list.last.should == v2
+      @list.size.should == 3
+      @list.unshift v2, v3
+      @list.size.should == 5
+      @list.first.should == v3
       @list.options[:marshal] = false
     end
 
@@ -646,6 +658,10 @@ describe Redis::HashKey do
     @hash['foo'].should == 'bar'
     @hash['abc'].should == '123'
     @hash['bang'].should == 'michael'
+
+    it "raises an error if a non-Hash is passed to fill" do
+      lambda { @hash.fill([]) }.should.raise(ArgumentError)
+    end
   end
 
   after do
@@ -992,7 +1008,6 @@ describe Redis::Set do
     @set_1.clear
     @set_2.clear
     @set_3.clear
-
   end
 end
 
@@ -1004,10 +1019,12 @@ describe Redis::SortedSet do
     @set_1 = Redis::SortedSet.new('spec/zset_1')
     @set_2 = Redis::SortedSet.new('spec/zset_2')
     @set_3 = Redis::SortedSet.new('spec/zset_3')
+    @set_4 = Redis::SortedSet.new('spec/zset_3', :marshal => true)
     @set.clear
     @set_1.clear
     @set_2.clear
     @set_3.clear
+    @set_4.clear
   end
 
   it "should handle sorted sets with floating point scores" do
@@ -1074,12 +1091,11 @@ describe Redis::SortedSet do
     @set.rangebyscore(0, 4, :count => 2).should == ['d','a']
     @set.rangebyscore(0, 4, :limit => 2).should == ['d','a']
 
-    # Redis 1.3.5
-    # @set.rangebyscore(0,4, :withscores => true).should == [['d',4],['a',3]]
-    # @set.revrangebyscore(0,4).should == ['d','a']
-    # @set.revrangebyscore(0,4, :count => 2).should == ['a','d']
-    # @set.rank('b').should == 2
-    # @set.revrank('b').should == 3
+    @set.revrangebyscore(4, 0, :withscores => true).should == [['a', 3], ['d', 0]]
+    @set.revrangebyscore(4, 0).should == ['a', 'd']
+    @set.revrangebyscore(4, 0, :count => 2).should == ['a','d']
+    @set.rank('b').should == 2
+    @set.revrank('b').should == 0
 
     # shouldn't report a rank for a key that doesn't exist
     @set.rank('foo').should.not == @set.rank(@set.first)
@@ -1118,6 +1134,15 @@ describe Redis::SortedSet do
     @set.size.should == 3
   end
 
+  it "should support marshaling key names" do
+    @set_4[Object] = 1.20
+    @set_4[Module] = 2.30
+    @set_4.incr(Object, 0.5)
+    @set_4.decr(Module, 0.5)
+    @set_4[Object].round(1).should == 1.7
+    @set_4[Module].round(1).should == 1.8
+  end
+
   it "should support renaming sorted sets" do
     @set.should.be.empty
     @set['zynga'] = 151
@@ -1141,5 +1166,6 @@ describe Redis::SortedSet do
     @set_1.clear
     @set_2.clear
     @set_3.clear
+    @set_4.clear
   end
 end
